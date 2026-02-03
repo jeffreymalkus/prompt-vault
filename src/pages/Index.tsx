@@ -24,13 +24,46 @@ import {
   Upload
 } from 'lucide-react';
 
+// Robust CSV line parser that handles quoted fields with commas
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++;
+      } else {
+        // Toggle quote mode
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
 // 10-column CSV parser as specified
 function parseCSV(text: string): Partial<AIPrompt>[] {
-  const lines = text.split('\n');
+  const lines = text.split(/\r?\n/);
   const result: Partial<AIPrompt>[] = [];
+  
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue;
-    const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+    
+    const row = parseCSVLine(lines[i]);
+    
     if (row && row.length >= 10) {
       const clean = (t: string | undefined) => t ? t.replace(/^"|"$/g, '').replace(/""/g, '"').trim() : '';
       result.push({
