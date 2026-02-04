@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    /* Background: Lighter sage green */
-    --background: 138 10% 75%;
+    /* Background: Very light sage - airy and open */
+    --background: 138 12% 82%;
     /* Text: #1F2A24 - Dark forest */
     --foreground: 150 16% 14%;
 
@@ -23,13 +23,13 @@
     --primary: 18 45% 51%;
     --primary-foreground: 40 33% 96%;
 
-    /* Secondary: Lighter sage */
-    --secondary: 138 10% 72%;
-    --secondary-foreground: 150 16% 20%;
+    /* Secondary: Darker sage buttons with WHITE text */
+    --secondary: 138 12% 55%;
+    --secondary-foreground: 0 0% 100%;
 
-    /* Muted: Lighter desaturated sage */
-    --muted: 138 8% 65%;
-    --muted-foreground: 150 10% 45%;
+    /* Muted: Light backgrounds, darker readable text */
+    --muted: 138 8% 88%;
+    --muted-foreground: 150 12% 35%;
 
     /* Accent: Terracotta #B96A4A */
     --accent: 18 45% 51%;
@@ -38,9 +38,9 @@
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Border: Lighter sage */
-    --border: 138 8% 65%;
-    --input: 138 8% 65%;
+    /* Border: Visible but gentle */
+    --border: 138 10% 70%;
+    --input: 138 10% 70%;
     --ring: 18 45% 51%;
 
     --radius: 0.75rem;
@@ -62,12 +62,12 @@
     --sidebar-primary-foreground: 40 33% 96%;
     --sidebar-accent: 18 45% 51%;
     --sidebar-accent-foreground: 40 33% 96%;
-    --sidebar-border: 138 8% 65%;
+    --sidebar-border: 138 10% 70%;
     --sidebar-ring: 18 45% 51%;
   }
 
   .dark {
-    --background: 138 10% 75%;
+    --background: 138 12% 82%;
     --foreground: 150 16% 14%;
     --card: 40 33% 94%;
     --card-foreground: 150 16% 14%;
@@ -75,16 +75,16 @@
     --popover-foreground: 150 16% 14%;
     --primary: 18 45% 51%;
     --primary-foreground: 40 33% 96%;
-    --secondary: 138 10% 72%;
-    --secondary-foreground: 150 16% 20%;
-    --muted: 138 8% 65%;
-    --muted-foreground: 150 10% 45%;
+    --secondary: 138 12% 55%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 138 8% 88%;
+    --muted-foreground: 150 12% 35%;
     --accent: 18 45% 51%;
     --accent-foreground: 40 33% 96%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 138 8% 65%;
-    --input: 138 8% 65%;
+    --border: 138 10% 70%;
+    --input: 138 10% 70%;
     --ring: 18 45% 51%;
 
     /* Amber/Gold for pinned items */
@@ -104,7 +104,7 @@
     --sidebar-primary-foreground: 40 33% 96%;
     --sidebar-accent: 18 45% 51%;
     --sidebar-accent-foreground: 40 33% 96%;
-    --sidebar-border: 138 8% 65%;
+    --sidebar-border: 138 10% 70%;
     --sidebar-ring: 18 45% 51%;
   }
 }
