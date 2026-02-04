@@ -422,20 +422,20 @@ const Index: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
-      <aside className="w-64 bg-card border-r border-border flex flex-col hidden lg:flex shrink-0">
-        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center shadow-accent-glow shrink-0">
-              <Layers className="text-accent-foreground" size={20} />
+      <aside className="w-72 bg-card border-r border-border flex flex-col hidden lg:flex shrink-0">
+        <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center shrink-0">
+              <Layers className="text-accent-foreground" size={22} />
             </div>
-            <h1 className="text-lg font-bold tracking-tight text-foreground leading-none text-nowrap">Prompt Notebook</h1>
+            <h1 className="text-xl font-bold tracking-tight text-foreground leading-none text-nowrap">Prompt Notebook</h1>
           </div>
           
-          <nav className="space-y-8">
-            <div className="space-y-2">
+          <nav className="space-y-10">
+            <div className="space-y-3">
               <button 
                 onClick={openManualUpload}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/20 rounded-xl text-sm font-bold transition-all shadow-indigo-glow active:scale-[0.98]"
+                className="w-full flex items-center gap-3 px-5 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
               >
                 <Plus size={18} />
                 NEW PROMPT
@@ -444,24 +444,24 @@ const Index: React.FC = () => {
 
             {frequentlyUsed.length > 0 && (
               <div>
-                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Activity size={12} className="text-primary" /> FREQUENTLY USED
+                <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide mb-4 flex items-center gap-2">
+                  <Activity size={14} className="text-primary" /> Frequently Used
                 </h3>
                 <div className="space-y-1">
                   {frequentlyUsed.map(p => (
-                    <div key={p.id} className="group flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 transition-all">
+                    <div key={p.id} className="group flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-all">
                       <button 
                         onClick={() => handleEdit(p)}
-                        className="flex-1 text-left text-xs font-medium text-muted-foreground group-hover:text-foreground truncate pr-2"
+                        className="flex-1 text-left text-sm font-medium text-foreground/70 group-hover:text-foreground truncate pr-2"
                       >
                         {p.title}
                       </button>
                       <button 
                         onClick={() => handleCopy(p)}
-                        className={`p-1.5 rounded-md transition-all ${lastCopiedId === p.id ? 'bg-success/20 text-success' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
+                        className={`p-2 rounded-md transition-all ${lastCopiedId === p.id ? 'bg-primary/20 text-primary' : 'text-foreground/50 hover:text-primary hover:bg-primary/10'}`}
                         title="Quick Copy"
                       >
-                        {lastCopiedId === p.id ? <Check size={12} /> : <Copy size={12} />}
+                        {lastCopiedId === p.id ? <Check size={14} /> : <Copy size={14} />}
                       </button>
                     </div>
                   ))}
@@ -470,16 +470,16 @@ const Index: React.FC = () => {
             )}
 
             <div>
-              <div className="flex items-center justify-between mb-3 group/header">
-                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <FolderIcon size={12} /> Folders / Clients
+              <div className="flex items-center justify-between mb-4 group/header">
+                <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide flex items-center gap-2">
+                  <FolderIcon size={14} /> Folders / Clients
                 </h3>
                 <button 
                   onClick={handleCreateFolder}
-                  className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+                  className="p-1.5 hover:bg-muted rounded-md text-foreground/50 hover:text-foreground transition-colors"
                   title="Create Folder"
                 >
-                  <Plus size={12} />
+                  <Plus size={14} />
                 </button>
               </div>
               <div className="space-y-1">
@@ -487,20 +487,20 @@ const Index: React.FC = () => {
                   <div key={folder} className="group relative">
                     <button
                       onClick={() => setActiveFolder(folder)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${activeFolder === folder ? 'bg-primary/10 text-primary border border-primary/20' : 'text-muted-foreground hover:bg-muted/30 border border-transparent'}`}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeFolder === folder ? 'bg-primary/15 text-primary' : 'text-foreground/70 hover:bg-muted/50'}`}
                     >
-                      <span className="flex items-center gap-2 overflow-hidden">
-                        <ChevronRight size={14} className={activeFolder === folder ? 'rotate-90 text-primary transition-transform' : 'transition-transform'} />
+                      <span className="flex items-center gap-2.5 overflow-hidden">
+                        <ChevronRight size={14} className={activeFolder === folder ? 'rotate-90 text-primary transition-transform' : 'transition-transform opacity-50'} />
                         <span className="truncate">{folder}</span>
                       </span>
-                      <span className="text-[10px] font-mono opacity-50 flex-shrink-0 ml-2">
+                      <span className="text-xs font-medium opacity-50 flex-shrink-0 ml-2">
                         {prompts.filter(p => folder === 'All' || p.folder === folder).length}
                       </span>
                     </button>
                     {folder !== 'All' && (
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-transparent">
-                        <button onClick={(e) => { e.stopPropagation(); handleRenameFolder(folder); }} className="p-1 hover:text-primary text-muted-foreground/50 transition-colors"><Edit3 size={12} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder); }} className="p-1 hover:text-destructive text-muted-foreground/50 transition-colors"><Trash2 size={12} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleRenameFolder(folder); }} className="p-1.5 hover:text-primary text-foreground/40 transition-colors"><Edit3 size={14} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder); }} className="p-1.5 hover:text-destructive text-foreground/40 transition-colors"><Trash2 size={14} /></button>
                       </div>
                     )}
                   </div>
@@ -509,15 +509,15 @@ const Index: React.FC = () => {
             </div>
 
             <div>
-              <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Layers size={12} /> Categories
+              <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide mb-4 flex items-center gap-2">
+                <Layers size={14} /> Categories
               </h3>
               <div className="space-y-1">
                 {DEFAULT_CATEGORIES.map(cat => (
                   <button
                     key={cat}
                     onClick={() => setActiveCategory(cat)}
-                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${activeCategory === cat ? 'bg-primary/10 text-primary border border-primary/20' : 'text-muted-foreground hover:text-foreground'}`}
+                    className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeCategory === cat ? 'bg-primary/15 text-primary' : 'text-foreground/70 hover:text-foreground hover:bg-muted/50'}`}
                   >
                     {cat}
                   </button>
@@ -529,13 +529,13 @@ const Index: React.FC = () => {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden bg-background">
-        <header className="h-16 border-b border-border flex items-center justify-between px-8 bg-background/50 backdrop-blur-xl sticky top-0 z-30">
+        <header className="h-18 border-b border-border flex items-center justify-between px-8 bg-card sticky top-0 z-30">
           <div className="flex-1 max-w-xl relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={16} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40 group-focus-within:text-primary transition-colors" size={18} />
             <input 
               type="text"
               placeholder="Search library and notes..."
-              className="w-full bg-secondary border border-border rounded-full py-2 pl-10 pr-4 outline-none focus:ring-1 focus:ring-primary/50 transition-all text-xs"
+              className="w-full bg-background border border-border rounded-full py-2.5 pl-12 pr-5 outline-none focus:ring-2 focus:ring-primary/30 transition-all text-sm text-foreground placeholder:text-foreground/40"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -551,107 +551,107 @@ const Index: React.FC = () => {
              />
              <button 
                 onClick={handleImportClick}
-                className="flex items-center gap-2 px-3 py-2 bg-secondary hover:bg-secondary/80 border border-border rounded-lg text-xs font-bold text-secondary-foreground transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
               >
-                <Upload size={14} />
+                <Upload size={16} />
                 IMPORT
               </button>
 
              <div className="relative">
               <button 
                 onClick={() => setShowExportMenu(!showExportMenu)}
-                className="flex items-center gap-2 px-3 py-2 bg-secondary hover:bg-secondary/80 border border-border rounded-lg text-xs font-bold text-secondary-foreground transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
               >
-                <Download size={14} />
+                <Download size={16} />
                 EXPORT
               </button>
               {showExportMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-popover border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl shadow-card-hover z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                   <button 
                     onClick={handleExportJSON}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-xs font-semibold text-foreground/80 hover:bg-muted transition-colors border-b border-border"
+                    className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors border-b border-border"
                   >
-                    <FileJson size={14} className="text-primary" />
+                    <FileJson size={16} className="text-primary" />
                     Export as JSON
                   </button>
                   <button 
                     onClick={handleExportCSV}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-xs font-semibold text-foreground/80 hover:bg-muted transition-colors"
+                    className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors"
                   >
-                    <FileSpreadsheet size={14} className="text-success" />
+                    <FileSpreadsheet size={16} className="text-accent" />
                     Export as CSV
                   </button>
                 </div>
               )}
              </div>
              
-             <div className="flex items-center gap-1 bg-secondary border border-border p-1 rounded-lg">
-              <button onClick={() => setViewMode(ViewMode.GRID)} className={`p-1.5 rounded-md transition-all ${viewMode === ViewMode.GRID ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}><Grid size={16} /></button>
-              <button onClick={() => setViewMode(ViewMode.TABLE)} className={`p-1.5 rounded-md transition-all ${viewMode === ViewMode.TABLE ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}><TableIcon size={16} /></button>
+             <div className="flex items-center gap-1 bg-muted p-1.5 rounded-lg">
+              <button onClick={() => setViewMode(ViewMode.GRID)} className={`p-2 rounded-md transition-all ${viewMode === ViewMode.GRID ? 'bg-primary text-primary-foreground' : 'text-foreground/50 hover:text-foreground'}`}><Grid size={18} /></button>
+              <button onClick={() => setViewMode(ViewMode.TABLE)} className={`p-2 rounded-md transition-all ${viewMode === ViewMode.TABLE ? 'bg-primary text-primary-foreground' : 'text-foreground/50 hover:text-foreground'}`}><TableIcon size={18} /></button>
             </div>
             <div className="flex items-center gap-2 ml-4">
-              <Zap className="text-primary" size={14} />
-              <span className="text-xs font-bold text-muted-foreground">{prompts.length} Prompts</span>
+              <Zap className="text-primary" size={16} />
+              <span className="text-sm font-semibold text-foreground/60">{prompts.length} Prompts</span>
             </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-10">
               <div>
-                <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
+                <h2 className="text-3xl font-bold text-foreground flex items-center gap-4">
                   {activeFolder === 'All' ? 'All Prompts' : activeFolder}
-                  <span className="px-2 py-0.5 text-[10px] bg-primary/10 text-primary border border-primary/20 rounded-full font-mono">
+                  <span className="px-3 py-1 text-xs bg-primary/15 text-primary rounded-full font-semibold">
                     {activeCategory}
                   </span>
                 </h2>
-                <p className="text-muted-foreground text-sm mt-1">Organize and manage your library.</p>
+                <p className="text-foreground/60 text-base mt-2">Organize and manage your library.</p>
               </div>
             </div>
 
             {filteredPrompts.length > 0 ? (
               <>
                 {viewMode === ViewMode.TABLE ? (
-                  <div className="overflow-hidden bg-card border border-border rounded-2xl">
+                  <div className="overflow-hidden bg-card rounded-2xl shadow-soft">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-secondary border-b border-border">
-                          <th className="p-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Type</th>
-                          <th className="p-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Name</th>
-                          <th className="p-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Pin</th>
-                          <th className="p-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right">Actions</th>
+                        <tr className="bg-muted/50 border-b border-border">
+                          <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Type</th>
+                          <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Name</th>
+                          <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-center">Pin</th>
+                          <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {filteredPrompts.map(prompt => (
-                          <tr key={prompt.id} className="hover:bg-muted/20 transition-colors group">
-                            <td className="p-4">
-                              <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter rounded-md border ${
-                                prompt.type === 'system' ? 'bg-type-system/10 text-type-system border-type-system/20' : 'bg-type-user/10 text-type-user border-type-user/20'
+                          <tr key={prompt.id} className="hover:bg-muted/30 transition-colors group">
+                            <td className="p-5">
+                              <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${
+                                prompt.type === 'system' ? 'bg-primary text-primary-foreground' : 'bg-accent text-accent-foreground'
                               }`}>
                                 {prompt.type}
                               </span>
                             </td>
-                            <td className="p-4">
-                              <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{prompt.title}</span>
-                                <span className="text-[11px] text-muted-foreground italic">v{prompt.version} • {prompt.description}</span>
+                            <td className="p-5">
+                              <div className="flex flex-col gap-1">
+                                <span className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">{prompt.title}</span>
+                                <span className="text-sm text-foreground/60">v{prompt.version} • {prompt.description}</span>
                               </div>
                             </td>
-                            <td className="p-4 text-center">
+                            <td className="p-5 text-center">
                               <button 
                                 onClick={() => togglePin(prompt.id)}
-                                className={`p-2 rounded-lg transition-all ${prompt.isPinned ? 'text-warning' : 'text-muted-foreground/50 hover:text-muted-foreground'}`}
+                                className={`p-2.5 rounded-lg transition-all ${prompt.isPinned ? 'text-amber bg-amber/10' : 'text-foreground/40 hover:text-foreground'}`}
                               >
-                                <Star size={14} fill={prompt.isPinned ? 'currentColor' : 'none'} />
+                                <Star size={16} fill={prompt.isPinned ? 'currentColor' : 'none'} />
                               </button>
                             </td>
-                            <td className="p-4 text-right">
+                            <td className="p-5 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <button onClick={() => handleCopy(prompt)} className={`p-2 rounded-lg transition-all ${lastCopiedId === prompt.id ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground hover:text-foreground'}`}><Check size={14} className={lastCopiedId === prompt.id ? 'block' : 'hidden'} /><Copy size={14} className={lastCopiedId === prompt.id ? 'hidden' : 'block'} /></button>
-                                <button onClick={() => handleEdit(prompt)} className="p-2 bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all"><Edit3 size={14} /></button>
-                                <button onClick={() => handleDelete(prompt.id)} className="p-2 bg-muted text-muted-foreground hover:text-destructive rounded-lg transition-all"><Trash2 size={14} /></button>
+                                <button onClick={() => handleCopy(prompt)} className={`p-2.5 rounded-lg transition-all ${lastCopiedId === prompt.id ? 'bg-primary/20 text-primary' : 'bg-muted text-foreground/60 hover:text-foreground'}`}><Check size={16} className={lastCopiedId === prompt.id ? 'block' : 'hidden'} /><Copy size={16} className={lastCopiedId === prompt.id ? 'hidden' : 'block'} /></button>
+                                <button onClick={() => handleEdit(prompt)} className="p-2.5 bg-muted text-foreground/60 hover:text-foreground rounded-lg transition-all"><Edit3 size={16} /></button>
+                                <button onClick={() => handleDelete(prompt.id)} className="p-2.5 bg-muted text-foreground/60 hover:text-destructive rounded-lg transition-all"><Trash2 size={16} /></button>
                               </div>
                             </td>
                           </tr>
@@ -660,7 +660,7 @@ const Index: React.FC = () => {
                     </table>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {filteredPrompts.map(prompt => (
                       <PromptCard 
                         key={prompt.id} 
@@ -678,9 +678,9 @@ const Index: React.FC = () => {
               </>
             ) : (
               <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
-                <Search size={40} className="text-muted-foreground/30 mb-4" />
-                <h3 className="text-xl font-bold mb-1">No prompts found</h3>
-                <p className="text-muted-foreground text-sm">Refine your search or try adding a new workflow.</p>
+                <Search size={48} className="text-foreground/20 mb-6" />
+                <h3 className="text-2xl font-bold mb-2 text-foreground">No prompts found</h3>
+                <p className="text-foreground/60 text-base">Refine your search or try adding a new workflow.</p>
               </div>
             )}
           </div>
