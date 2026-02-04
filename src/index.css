@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    /* Background: #8A9B8F - Sage green */
-    --background: 138 10% 58%;
+    /* Background: Lighter sage green */
+    --background: 138 10% 75%;
     /* Text: #1F2A24 - Dark forest */
     --foreground: 150 16% 14%;
 
@@ -67,7 +67,7 @@
   }
 
   .dark {
-    --background: 138 10% 58%;
+    --background: 138 10% 75%;
     --foreground: 150 16% 14%;
     --card: 40 33% 94%;
     --card-foreground: 150 16% 14%;
