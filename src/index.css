@@ -2,74 +2,84 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Collected Prompts - Dark Vault Design System */
+/* Prompt Notebook - Warm Sage Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 95%;
+    /* Background: #8A9B8F - Sage green */
+    --background: 138 10% 58%;
+    /* Text: #1F2A24 - Dark forest */
+    --foreground: 150 16% 14%;
 
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 95%;
+    /* Card: #F6F1E8 - Warm cream */
+    --card: 40 33% 94%;
+    --card-foreground: 150 16% 14%;
 
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 95%;
+    /* Popover matches card */
+    --popover: 40 33% 94%;
+    --popover-foreground: 150 16% 14%;
 
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary: Accent terracotta #B96A4A */
+    --primary: 18 45% 51%;
+    --primary-foreground: 40 33% 96%;
 
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 95%;
+    /* Secondary: Lighter sage */
+    --secondary: 138 10% 52%;
+    --secondary-foreground: 150 16% 14%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 45%;
+    /* Muted: Desaturated sage */
+    --muted: 138 8% 48%;
+    --muted-foreground: 150 10% 28%;
 
-    --accent: 239 84% 67%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent: Terracotta #B96A4A */
+    --accent: 18 45% 51%;
+    --accent-foreground: 40 33% 96%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 13%;
-    --input: 0 0% 13%;
-    --ring: 239 84% 67%;
+    /* Border: Slightly darker sage */
+    --border: 138 8% 50%;
+    --input: 138 8% 50%;
+    --ring: 18 45% 51%;
 
     --radius: 0.75rem;
 
-    /* Custom vault colors */
-    --vault-bg: 0 0% 4%;
-    --vault-surface: 0 0% 5%;
-    --vault-surface-elevated: 0 0% 8%;
-    --vault-border: 0 0% 13%;
-    --vault-border-hover: 239 50% 40%;
+    /* Custom notebook colors */
+    --notebook-bg: 138 10% 58%;
+    --notebook-surface: 40 33% 94%;
+    --notebook-surface-elevated: 40 30% 90%;
+    --notebook-border: 138 8% 50%;
+    --notebook-border-hover: 18 45% 51%;
     
-    --indigo-glow: 239 84% 67%;
-    --purple-accent: 271 81% 56%;
-    --blue-accent: 217 91% 60%;
-    --green-accent: 142 76% 36%;
-    --yellow-accent: 45 93% 47%;
+    /* Accent palette */
+    --terracotta: 18 45% 51%;
+    --pinned-gold: 40 60% 60%;
+    --sage-dark: 138 12% 45%;
+    --green-accent: 142 40% 40%;
+    --yellow-accent: 40 60% 60%;
   }
 
   .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 239 84% 67%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 30%;
+    --background: 138 10% 58%;
+    --foreground: 150 16% 14%;
+    --card: 40 33% 94%;
+    --card-foreground: 150 16% 14%;
+    --popover: 40 33% 94%;
+    --popover-foreground: 150 16% 14%;
+    --primary: 18 45% 51%;
+    --primary-foreground: 40 33% 96%;
+    --secondary: 138 10% 52%;
+    --secondary-foreground: 150 16% 14%;
+    --muted: 138 8% 48%;
+    --muted-foreground: 150 10% 28%;
+    --accent: 18 45% 51%;
+    --accent-foreground: 40 33% 96%;
+    --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 13%;
-    --input: 0 0% 13%;
-    --ring: 239 84% 67%;
+    --border: 138 8% 50%;
+    --input: 138 8% 50%;
+    --ring: 18 45% 51%;
   }
 }
 
