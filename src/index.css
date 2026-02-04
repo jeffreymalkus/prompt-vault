@@ -6,9 +6,9 @@
 
 @layer base {
   :root {
-    /* Background: Very light sage - airy and open */
-    --background: 138 12% 82%;
-    /* Text: #1F2A24 - Dark forest */
+    /* Background: Warm cream-gray #EDE8E0 */
+    --background: 40 25% 90%;
+    /* Text: #1F2A24 - Dark charcoal */
     --foreground: 150 16% 14%;
 
     /* Card: #F6F1E8 - Warm cream */
@@ -19,17 +19,17 @@
     --popover: 40 33% 94%;
     --popover-foreground: 150 16% 14%;
 
-    /* Primary: Accent terracotta #B96A4A */
-    --primary: 18 45% 51%;
-    --primary-foreground: 40 33% 96%;
+    /* Primary: Dark teal #4A7C72 - WHITE text */
+    --primary: 165 25% 39%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Darker sage buttons with WHITE text */
-    --secondary: 138 12% 55%;
+    /* Secondary: Dark slate #2F3A3E - WHITE text */
+    --secondary: 195 15% 25%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Muted: Light backgrounds, darker readable text */
-    --muted: 138 8% 88%;
-    --muted-foreground: 150 12% 35%;
+    /* Muted: Light warm tones, readable dark text */
+    --muted: 40 15% 85%;
+    --muted-foreground: 150 12% 30%;
 
     /* Accent: Terracotta #B96A4A */
     --accent: 18 45% 51%;
@@ -38,9 +38,9 @@
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Border: Visible but gentle */
-    --border: 138 10% 70%;
-    --input: 138 10% 70%;
+    /* Border: Subtle warm gray */
+    --border: 40 10% 75%;
+    --input: 40 10% 75%;
     --ring: 18 45% 51%;
 
     --radius: 0.75rem;
@@ -67,24 +67,29 @@
   }
 
   .dark {
-    --background: 138 12% 82%;
+    /* Background: Warm cream-gray #EDE8E0 */
+    --background: 40 25% 90%;
     --foreground: 150 16% 14%;
     --card: 40 33% 94%;
     --card-foreground: 150 16% 14%;
     --popover: 40 33% 94%;
     --popover-foreground: 150 16% 14%;
-    --primary: 18 45% 51%;
-    --primary-foreground: 40 33% 96%;
-    --secondary: 138 12% 55%;
+    /* Primary: Dark teal #4A7C72 - WHITE text */
+    --primary: 165 25% 39%;
+    --primary-foreground: 0 0% 100%;
+    /* Secondary: Dark slate #2F3A3E - WHITE text */
+    --secondary: 195 15% 25%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 138 8% 88%;
-    --muted-foreground: 150 12% 35%;
+    /* Muted: Light warm tones, readable dark text */
+    --muted: 40 15% 85%;
+    --muted-foreground: 150 12% 30%;
     --accent: 18 45% 51%;
     --accent-foreground: 40 33% 96%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 138 10% 70%;
-    --input: 138 10% 70%;
+    /* Border: Subtle warm gray */
+    --border: 40 10% 75%;
+    --input: 40 10% 75%;
     --ring: 18 45% 51%;
 
     /* Amber/Gold for pinned items */
