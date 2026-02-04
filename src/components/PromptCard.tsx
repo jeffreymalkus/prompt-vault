@@ -10,6 +10,7 @@ interface PromptCardProps {
   onTogglePin: () => void;
   isCopied: boolean;
   versionCount?: number;
+  onClick?: () => void;
 }
 
 export const PromptCard: React.FC<PromptCardProps> = ({ 
@@ -26,8 +27,19 @@ export const PromptCard: React.FC<PromptCardProps> = ({
 
   const isSystem = prompt.type === 'system';
 
+  // Clicking the card opens the prompt
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger if clicking on interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+    onEdit(prompt);
+  };
+
   return (
-    <div className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300 shadow-soft flex flex-col h-full">
+    <div 
+      className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300 shadow-soft flex flex-col h-full cursor-pointer"
+      onClick={handleCardClick}
+    >
       <div className="p-6 flex-1">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -45,21 +57,21 @@ export const PromptCard: React.FC<PromptCardProps> = ({
           </div>
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button 
-              onClick={onTogglePin}
+              onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
               className={`p-1.5 rounded-lg transition-all ${prompt.isPinned ? 'text-warning bg-warning/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
               title={prompt.isPinned ? 'Unpin' : 'Pin for quick access'}
             >
               <Star size={16} fill={prompt.isPinned ? 'currentColor' : 'none'} />
             </button>
             <button 
-              onClick={() => onEdit(prompt)}
+              onClick={(e) => { e.stopPropagation(); onEdit(prompt); }}
               className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground"
               title="Edit/Version"
             >
               <Edit3 size={16} />
             </button>
             <button 
-              onClick={() => onDelete(prompt.id)}
+              onClick={(e) => { e.stopPropagation(); onDelete(prompt.id); }}
               className="p-1.5 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive"
               title="Delete"
             >
@@ -109,7 +121,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({
             </div>
             {prompt.content.length > 120 && (
               <button 
-                onClick={() => setExpandedContent(!expandedContent)}
+                onClick={(e) => { e.stopPropagation(); setExpandedContent(!expandedContent); }}
                 className="mt-2 text-xs text-primary hover:text-primary/80 font-semibold"
               >
                 {expandedContent ? '▲ Show Less' : '▼ Show More'}
@@ -120,7 +132,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({
           {prompt.notes && (
             <div className="mt-3">
               <button 
-                onClick={() => setShowNotes(!showNotes)}
+                onClick={(e) => { e.stopPropagation(); setShowNotes(!showNotes); }}
                 className="flex items-center gap-2 text-xs font-semibold text-foreground/60 hover:text-primary transition-colors"
               >
                 <BookOpen size={14} />
@@ -143,7 +155,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({
           {new Date(prompt.createdAt).toLocaleDateString()}
         </div>
         <button 
-          onClick={onCopy}
+          onClick={(e) => { e.stopPropagation(); onCopy(); }}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
             isCopied 
             ? 'bg-primary text-primary-foreground' 

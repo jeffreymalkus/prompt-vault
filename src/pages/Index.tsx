@@ -21,7 +21,9 @@ import {
   Download,
   FileJson,
   FileSpreadsheet,
-  Upload
+  Upload,
+  Menu,
+  X
 } from 'lucide-react';
 
 // Robust CSV line parser that handles quoted fields with commas
@@ -92,6 +94,7 @@ const Index: React.FC = () => {
   const [editingPrompt, setEditingPrompt] = useState<AIPrompt | undefined>(undefined);
   const [lastCopiedId, setLastCopiedId] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load and seed
@@ -306,17 +309,32 @@ const Index: React.FC = () => {
 
   const mergePrompts = (newPrompts: AIPrompt[]) => {
     setPrompts(prev => {
-      const existingIds = new Set(prev.map(p => p.id));
-      const filtered = newPrompts.filter(p => !existingIds.has(p.id));
+      // Create a set of existing prompt signatures for duplicate detection
+      const existingSignatures = new Set(
+        prev.map(p => `${p.type}|${p.folder}|${p.title}|${p.content}`)
+      );
+      
+      // Filter out duplicates by matching type+folder+title+content
+      const filtered = newPrompts.filter(p => {
+        const signature = `${p.type}|${p.folder}|${p.title}|${p.content}`;
+        return !existingSignatures.has(signature);
+      });
+      
+      const duplicateCount = newPrompts.length - filtered.length;
       const newFolders = Array.from(new Set(newPrompts.map(p => p.folder)));
       setCustomFolders(prevFolders => Array.from(new Set([...prevFolders, ...newFolders])));
       
       if (filtered.length === 0) {
-        alert('All prompts in the file already exist in your notebook.');
+        alert('All prompts in the file already exist in your notebook (duplicates were skipped).');
         return prev;
       }
       
-      alert(`Successfully imported ${filtered.length} new prompts.`);
+      if (duplicateCount > 0) {
+        alert(`Successfully imported ${filtered.length} new prompts. ${duplicateCount} duplicate(s) were skipped.`);
+      } else {
+        alert(`Successfully imported ${filtered.length} new prompts.`);
+      }
+      
       return [...filtered, ...prev];
     });
   };
@@ -420,116 +438,162 @@ const Index: React.FC = () => {
     if (activeFolder === name) setActiveFolder('All');
   };
 
+  // Close mobile sidebar when folder/category selected
+  const handleFolderSelect = (folder: string) => {
+    setActiveFolder(folder);
+    setMobileSidebarOpen(false);
+  };
+
+  const handleCategorySelect = (cat: string) => {
+    setActiveCategory(cat);
+    setMobileSidebarOpen(false);
+  };
+
+  // Sidebar content (shared between desktop and mobile)
+  const sidebarContent = (
+    <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
+      <div className="flex items-center gap-3 mb-10">
+        <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center shrink-0">
+          <Layers className="text-accent-foreground" size={22} />
+        </div>
+        <h1 className="text-xl font-bold tracking-tight text-foreground leading-none text-nowrap">Prompt Notebook</h1>
+      </div>
+      
+      <nav className="space-y-10">
+        <div className="space-y-3">
+          <button 
+            onClick={() => { openManualUpload(); setMobileSidebarOpen(false); }}
+            className="w-full flex items-center gap-3 px-5 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            <Plus size={18} />
+            NEW PROMPT
+          </button>
+        </div>
+
+        {frequentlyUsed.length > 0 && (
+          <div>
+            <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide mb-4 flex items-center gap-2">
+              <Activity size={14} className="text-primary" /> Frequently Used
+            </h3>
+            <div className="space-y-1">
+              {frequentlyUsed.map(p => (
+                <div key={p.id} className="group flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-all">
+                  <button 
+                    onClick={() => { handleEdit(p); setMobileSidebarOpen(false); }}
+                    className="flex-1 text-left text-sm font-medium text-foreground/70 group-hover:text-foreground truncate pr-2"
+                  >
+                    {p.title}
+                  </button>
+                  <button 
+                    onClick={() => handleCopy(p)}
+                    className={`p-2 rounded-md transition-all ${lastCopiedId === p.id ? 'bg-primary/20 text-primary' : 'text-foreground/50 hover:text-primary hover:bg-primary/10'}`}
+                    title="Quick Copy"
+                  >
+                    {lastCopiedId === p.id ? <Check size={14} /> : <Copy size={14} />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <div className="flex items-center justify-between mb-4 group/header">
+            <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide flex items-center gap-2">
+              <FolderIcon size={14} /> Folders / Clients
+            </h3>
+            <button 
+              onClick={handleCreateFolder}
+              className="p-1.5 hover:bg-muted rounded-md text-foreground/50 hover:text-foreground transition-colors"
+              title="Create Folder"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+          <div className="space-y-1">
+            {uniqueFolders.map(folder => (
+              <div key={folder} className="group relative">
+                <button
+                  onClick={() => handleFolderSelect(folder)}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeFolder === folder ? 'bg-primary/15 text-primary' : 'text-foreground/70 hover:bg-muted/50'}`}
+                >
+                  <span className="flex items-center gap-2.5 overflow-hidden">
+                    <ChevronRight size={14} className={activeFolder === folder ? 'rotate-90 text-primary transition-transform' : 'transition-transform opacity-50'} />
+                    <span className="truncate">{folder}</span>
+                  </span>
+                  <span className="text-xs font-medium opacity-50 flex-shrink-0 ml-2">
+                    {prompts.filter(p => folder === 'All' || p.folder === folder).length}
+                  </span>
+                </button>
+                {folder !== 'All' && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-transparent">
+                    <button onClick={(e) => { e.stopPropagation(); handleRenameFolder(folder); }} className="p-1.5 hover:text-primary text-foreground/40 transition-colors"><Edit3 size={14} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder); }} className="p-1.5 hover:text-destructive text-foreground/40 transition-colors"><Trash2 size={14} /></button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide mb-4 flex items-center gap-2">
+            <Layers size={14} /> Categories
+          </h3>
+          <div className="space-y-1">
+            {DEFAULT_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => handleCategorySelect(cat)}
+                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeCategory === cat ? 'bg-primary/15 text-primary' : 'text-foreground/70 hover:text-foreground hover:bg-muted/50'}`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      </nav>
+    </div>
+  );
+
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
-      <aside className="w-72 bg-card border-r border-border flex flex-col hidden lg:flex shrink-0">
-        <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center shrink-0">
-              <Layers className="text-accent-foreground" size={22} />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground leading-none text-nowrap">Prompt Notebook</h1>
-          </div>
-          
-          <nav className="space-y-10">
-            <div className="space-y-3">
-              <button 
-                onClick={openManualUpload}
-                className="w-full flex items-center gap-3 px-5 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
-              >
-                <Plus size={18} />
-                NEW PROMPT
-              </button>
-            </div>
-
-            {frequentlyUsed.length > 0 && (
-              <div>
-                <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide mb-4 flex items-center gap-2">
-                  <Activity size={14} className="text-primary" /> Frequently Used
-                </h3>
-                <div className="space-y-1">
-                  {frequentlyUsed.map(p => (
-                    <div key={p.id} className="group flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-all">
-                      <button 
-                        onClick={() => handleEdit(p)}
-                        className="flex-1 text-left text-sm font-medium text-foreground/70 group-hover:text-foreground truncate pr-2"
-                      >
-                        {p.title}
-                      </button>
-                      <button 
-                        onClick={() => handleCopy(p)}
-                        className={`p-2 rounded-md transition-all ${lastCopiedId === p.id ? 'bg-primary/20 text-primary' : 'text-foreground/50 hover:text-primary hover:bg-primary/10'}`}
-                        title="Quick Copy"
-                      >
-                        {lastCopiedId === p.id ? <Check size={14} /> : <Copy size={14} />}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="flex items-center justify-between mb-4 group/header">
-                <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide flex items-center gap-2">
-                  <FolderIcon size={14} /> Folders / Clients
-                </h3>
-                <button 
-                  onClick={handleCreateFolder}
-                  className="p-1.5 hover:bg-muted rounded-md text-foreground/50 hover:text-foreground transition-colors"
-                  title="Create Folder"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-              <div className="space-y-1">
-                {uniqueFolders.map(folder => (
-                  <div key={folder} className="group relative">
-                    <button
-                      onClick={() => setActiveFolder(folder)}
-                      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeFolder === folder ? 'bg-primary/15 text-primary' : 'text-foreground/70 hover:bg-muted/50'}`}
-                    >
-                      <span className="flex items-center gap-2.5 overflow-hidden">
-                        <ChevronRight size={14} className={activeFolder === folder ? 'rotate-90 text-primary transition-transform' : 'transition-transform opacity-50'} />
-                        <span className="truncate">{folder}</span>
-                      </span>
-                      <span className="text-xs font-medium opacity-50 flex-shrink-0 ml-2">
-                        {prompts.filter(p => folder === 'All' || p.folder === folder).length}
-                      </span>
-                    </button>
-                    {folder !== 'All' && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-transparent">
-                        <button onClick={(e) => { e.stopPropagation(); handleRenameFolder(folder); }} className="p-1.5 hover:text-primary text-foreground/40 transition-colors"><Edit3 size={14} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder); }} className="p-1.5 hover:text-destructive text-foreground/40 transition-colors"><Trash2 size={14} /></button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide mb-4 flex items-center gap-2">
-                <Layers size={14} /> Categories
-              </h3>
-              <div className="space-y-1">
-                {DEFAULT_CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeCategory === cat ? 'bg-primary/15 text-primary' : 'text-foreground/70 hover:text-foreground hover:bg-muted/50'}`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </nav>
+      {/* Mobile sidebar overlay */}
+      {mobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+      
+      {/* Mobile sidebar drawer */}
+      <aside className={`fixed inset-y-0 left-0 w-72 bg-card border-r border-border flex flex-col z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex items-center justify-end p-4 border-b border-border">
+          <button 
+            onClick={() => setMobileSidebarOpen(false)}
+            className="p-2 hover:bg-muted rounded-lg text-foreground/60 hover:text-foreground transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside className="w-72 bg-card border-r border-border flex-col hidden lg:flex shrink-0">
+        {sidebarContent}
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden bg-background">
-        <header className="h-18 border-b border-border flex items-center justify-between px-8 bg-card sticky top-0 z-30">
+        <header className="h-18 border-b border-border flex items-center justify-between px-4 lg:px-8 bg-card sticky top-0 z-30 gap-3">
+          {/* Mobile hamburger menu */}
+          <button 
+            onClick={() => setMobileSidebarOpen(true)}
+            className="p-2 hover:bg-muted rounded-lg text-foreground/60 hover:text-foreground transition-colors lg:hidden"
+          >
+            <Menu size={22} />
+          </button>
+          
           <div className="flex-1 max-w-xl relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40 group-focus-within:text-primary transition-colors" size={18} />
             <input 
@@ -625,7 +689,11 @@ const Index: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {filteredPrompts.map(prompt => (
-                          <tr key={prompt.id} className="hover:bg-muted/30 transition-colors group">
+                          <tr 
+                            key={prompt.id} 
+                            className="hover:bg-muted/30 transition-colors group cursor-pointer"
+                            onClick={() => handleEdit(prompt)}
+                          >
                             <td className="p-5">
                               <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${
                                 prompt.type === 'system' ? 'bg-primary text-primary-foreground' : 'bg-accent text-accent-foreground'
@@ -641,7 +709,7 @@ const Index: React.FC = () => {
                             </td>
                             <td className="p-5 text-center">
                               <button 
-                                onClick={() => togglePin(prompt.id)}
+                                onClick={(e) => { e.stopPropagation(); togglePin(prompt.id); }}
                                 className={`p-2.5 rounded-lg transition-all ${prompt.isPinned ? 'text-amber bg-amber/10' : 'text-foreground/40 hover:text-foreground'}`}
                               >
                                 <Star size={16} fill={prompt.isPinned ? 'currentColor' : 'none'} />
@@ -649,9 +717,9 @@ const Index: React.FC = () => {
                             </td>
                             <td className="p-5 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <button onClick={() => handleCopy(prompt)} className={`p-2.5 rounded-lg transition-all ${lastCopiedId === prompt.id ? 'bg-primary/20 text-primary' : 'bg-muted text-foreground/60 hover:text-foreground'}`}><Check size={16} className={lastCopiedId === prompt.id ? 'block' : 'hidden'} /><Copy size={16} className={lastCopiedId === prompt.id ? 'hidden' : 'block'} /></button>
-                                <button onClick={() => handleEdit(prompt)} className="p-2.5 bg-muted text-foreground/60 hover:text-foreground rounded-lg transition-all"><Edit3 size={16} /></button>
-                                <button onClick={() => handleDelete(prompt.id)} className="p-2.5 bg-muted text-foreground/60 hover:text-destructive rounded-lg transition-all"><Trash2 size={16} /></button>
+                                <button onClick={(e) => { e.stopPropagation(); handleCopy(prompt); }} className={`p-2.5 rounded-lg transition-all ${lastCopiedId === prompt.id ? 'bg-primary/20 text-primary' : 'bg-muted text-foreground/60 hover:text-foreground'}`}><Check size={16} className={lastCopiedId === prompt.id ? 'block' : 'hidden'} /><Copy size={16} className={lastCopiedId === prompt.id ? 'hidden' : 'block'} /></button>
+                                <button onClick={(e) => { e.stopPropagation(); handleEdit(prompt); }} className="p-2.5 bg-muted text-foreground/60 hover:text-foreground rounded-lg transition-all"><Edit3 size={16} /></button>
+                                <button onClick={(e) => { e.stopPropagation(); handleDelete(prompt.id); }} className="p-2.5 bg-muted text-foreground/60 hover:text-destructive rounded-lg transition-all"><Trash2 size={16} /></button>
                               </div>
                             </td>
                           </tr>
