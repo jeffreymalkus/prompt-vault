@@ -24,12 +24,12 @@
     --primary-foreground: 40 33% 96%;
 
     /* Secondary: Lighter sage */
-    --secondary: 138 10% 52%;
-    --secondary-foreground: 150 16% 14%;
+    --secondary: 138 10% 72%;
+    --secondary-foreground: 150 16% 20%;
 
-    /* Muted: Desaturated sage */
-    --muted: 138 8% 48%;
-    --muted-foreground: 150 10% 28%;
+    /* Muted: Lighter desaturated sage */
+    --muted: 138 8% 65%;
+    --muted-foreground: 150 10% 45%;
 
     /* Accent: Terracotta #B96A4A */
     --accent: 18 45% 51%;
@@ -38,9 +38,9 @@
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Border: Slightly darker sage */
-    --border: 138 8% 50%;
-    --input: 138 8% 50%;
+    /* Border: Lighter sage */
+    --border: 138 8% 65%;
+    --input: 138 8% 65%;
     --ring: 18 45% 51%;
 
     --radius: 0.75rem;
@@ -62,7 +62,7 @@
     --sidebar-primary-foreground: 40 33% 96%;
     --sidebar-accent: 18 45% 51%;
     --sidebar-accent-foreground: 40 33% 96%;
-    --sidebar-border: 138 8% 50%;
+    --sidebar-border: 138 8% 65%;
     --sidebar-ring: 18 45% 51%;
   }
 
@@ -75,16 +75,16 @@
     --popover-foreground: 150 16% 14%;
     --primary: 18 45% 51%;
     --primary-foreground: 40 33% 96%;
-    --secondary: 138 10% 52%;
-    --secondary-foreground: 150 16% 14%;
-    --muted: 138 8% 48%;
-    --muted-foreground: 150 10% 28%;
+    --secondary: 138 10% 72%;
+    --secondary-foreground: 150 16% 20%;
+    --muted: 138 8% 65%;
+    --muted-foreground: 150 10% 45%;
     --accent: 18 45% 51%;
     --accent-foreground: 40 33% 96%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 138 8% 50%;
-    --input: 138 8% 50%;
+    --border: 138 8% 65%;
+    --input: 138 8% 65%;
     --ring: 18 45% 51%;
 
     /* Amber/Gold for pinned items */
@@ -104,7 +104,7 @@
     --sidebar-primary-foreground: 40 33% 96%;
     --sidebar-accent: 18 45% 51%;
     --sidebar-accent-foreground: 40 33% 96%;
-    --sidebar-border: 138 8% 50%;
+    --sidebar-border: 138 8% 65%;
     --sidebar-ring: 18 45% 51%;
   }
 }
