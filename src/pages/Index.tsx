@@ -551,7 +551,7 @@ const Index: React.FC = () => {
              />
              <button 
                 onClick={handleImportClick}
-                className="flex items-center gap-2 px-3 py-2 bg-secondary hover:bg-muted border border-border rounded-lg text-xs font-bold text-muted-foreground transition-all"
+                className="flex items-center gap-2 px-3 py-2 bg-secondary hover:bg-secondary/80 border border-border rounded-lg text-xs font-bold text-secondary-foreground transition-all"
               >
                 <Upload size={14} />
                 IMPORT
@@ -560,7 +560,7 @@ const Index: React.FC = () => {
              <div className="relative">
               <button 
                 onClick={() => setShowExportMenu(!showExportMenu)}
-                className="flex items-center gap-2 px-3 py-2 bg-secondary hover:bg-muted border border-border rounded-lg text-xs font-bold text-muted-foreground transition-all"
+                className="flex items-center gap-2 px-3 py-2 bg-secondary hover:bg-secondary/80 border border-border rounded-lg text-xs font-bold text-secondary-foreground transition-all"
               >
                 <Download size={14} />
                 EXPORT
