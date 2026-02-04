@@ -48,19 +48,19 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         vault: {
-          bg: "hsl(var(--vault-bg))",
-          surface: "hsl(var(--vault-surface))",
-          elevated: "hsl(var(--vault-surface-elevated))",
-          border: "hsl(var(--vault-border))",
-          "border-hover": "hsl(var(--vault-border-hover))",
+          bg: "hsl(var(--notebook-bg))",
+          surface: "hsl(var(--notebook-surface))",
+          elevated: "hsl(var(--notebook-surface-elevated))",
+          border: "hsl(var(--notebook-border))",
+          "border-hover": "hsl(var(--notebook-border-hover))",
         },
-        indigo: {
-          glow: "hsl(var(--indigo-glow))",
+        terracotta: {
+          DEFAULT: "hsl(var(--terracotta))",
         },
-        "type-system": "hsl(var(--purple-accent))",
-        "type-user": "hsl(var(--blue-accent))",
+        "type-system": "hsl(var(--terracotta))",
+        "type-user": "hsl(var(--sage-dark))",
         success: "hsl(var(--green-accent))",
-        warning: "hsl(var(--yellow-accent))",
+        warning: "hsl(var(--pinned-gold))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -70,8 +70,9 @@ export default {
         "2xl": "calc(var(--radius) + 8px)",
       },
       boxShadow: {
-        "indigo-glow": "0 4px 20px -4px hsl(239 84% 67% / 0.3)",
-        "indigo-sm": "0 2px 12px -2px hsl(239 84% 67% / 0.2)",
+        "accent-glow": "0 4px 20px -4px hsl(18 45% 51% / 0.3)",
+        "indigo-glow": "0 4px 20px -4px hsl(18 45% 51% / 0.3)",
+        "indigo-sm": "0 2px 12px -2px hsl(18 45% 51% / 0.2)",
       },
       keyframes: {
         "accordion-down": {

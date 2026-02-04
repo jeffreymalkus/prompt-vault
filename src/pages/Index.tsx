@@ -312,7 +312,7 @@ const Index: React.FC = () => {
       setCustomFolders(prevFolders => Array.from(new Set([...prevFolders, ...newFolders])));
       
       if (filtered.length === 0) {
-        alert('All prompts in the file already exist in your vault.');
+        alert('All prompts in the file already exist in your notebook.');
         return prev;
       }
       
@@ -425,10 +425,10 @@ const Index: React.FC = () => {
       <aside className="w-64 bg-card border-r border-border flex flex-col hidden lg:flex shrink-0">
         <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-indigo-glow shrink-0">
-              <Vault className="text-primary-foreground" size={20} />
+            <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center shadow-accent-glow shrink-0">
+              <Layers className="text-accent-foreground" size={20} />
             </div>
-            <h1 className="text-lg font-bold tracking-tight text-foreground leading-none text-nowrap">Collected Prompts</h1>
+            <h1 className="text-lg font-bold tracking-tight text-foreground leading-none text-nowrap">Prompt Notebook</h1>
           </div>
           
           <nav className="space-y-8">
@@ -601,7 +601,7 @@ const Index: React.FC = () => {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
-                  {activeFolder === 'All' ? 'Complete Vault' : activeFolder}
+                  {activeFolder === 'All' ? 'All Prompts' : activeFolder}
                   <span className="px-2 py-0.5 text-[10px] bg-primary/10 text-primary border border-primary/20 rounded-full font-mono">
                     {activeCategory}
                   </span>
