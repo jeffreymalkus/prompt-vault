@@ -1,60 +1,92 @@
 
-# Complete Color System Fix for Readability
 
-## The Core Problem
+# Fix Color Palette to Match Reference Design
 
-Right now everything blends together:
-- Background: 75% lightness
-- Secondary buttons: 72% lightness (only 3% difference - invisible!)
-- Borders: 65% lightness
+## Problem Identified
 
-This creates a muddy, hard-to-read interface.
+The current design has readability issues because:
+1. The background is sage green - but the reference shows a warm cream/gray background
+2. Some buttons use hardcoded `text-muted-foreground` classes that override CSS variables
+3. The secondary button color blends with the background
 
----
+## Colors from Your Reference Image
 
-## The Fix
-
-Create a proper contrast hierarchy where each element is clearly distinguishable:
-
-| Element | Current | New | Why |
-|---------|---------|-----|-----|
-| Background | 75% | 82% | Lighter, airier base |
-| Secondary buttons | 72% | 55% | Much darker - clearly visible |
-| Secondary button text | 20% (dark) | 100% (white) | High contrast on dark buttons |
-| Muted backgrounds | 65% | 88% | Subtle, light |
-| Muted text | 45% | 35% | Darker = easier to read |
-| Borders | 65% | 70% | Visible but gentle |
+| Element | Color | HSL |
+|---------|-------|-----|
+| Main Background | Warm cream-gray #EDE8E0 | 40 25% 90% |
+| Sidebar/Cards | Warm cream #F6F1E8 | 40 33% 94% |
+| Primary Button (New Prompt) | Dark teal #4A7C72 | 165 25% 39% |
+| CTA Button (Add Your First) | Dark slate #2F3A3E | 195 15% 21% |
+| Text | Dark charcoal #1F2A24 | 150 16% 14% |
+| Accent (Active nav) | Terracotta #B96A4A | 18 45% 51% |
 
 ---
 
-## File Change
+## Changes Required
 
-**src/index.css** - Update both `:root` and `.dark` sections:
+### 1. src/index.css - Update Color Variables
+
+Update both `:root` and `.dark` sections:
 
 ```css
-/* Background: Very light sage */
---background: 138 12% 82%;
+/* Background: Warm cream-gray (not green) */
+--background: 40 25% 90%;
 
-/* Secondary: Darker sage buttons with WHITE text */
---secondary: 138 12% 55%;
+/* Primary: Dark teal for main buttons - WHITE text */
+--primary: 165 25% 39%;
+--primary-foreground: 0 0% 100%;
+
+/* Secondary: Dark slate/charcoal - WHITE text */
+--secondary: 195 15% 25%;
 --secondary-foreground: 0 0% 100%;
 
-/* Muted: Light backgrounds, darker readable text */
---muted: 138 8% 88%;
---muted-foreground: 150 12% 35%;
+/* Muted: Light warm tones, readable dark text */
+--muted: 40 15% 85%;
+--muted-foreground: 150 12% 30%;
 
-/* Borders: Visible but not harsh */
---border: 138 10% 70%;
---input: 138 10% 70%;
---sidebar-border: 138 10% 70%;
+/* Border: Subtle warm gray */
+--border: 40 10% 75%;
+--input: 40 10% 75%;
+```
+
+### 2. src/pages/Index.tsx - Fix Button Text Colors
+
+Some buttons explicitly use `text-muted-foreground` which makes button text unreadable. These need to change to `text-secondary-foreground`:
+
+**Line 554** - Import button:
+```tsx
+// Before
+className="... text-muted-foreground ..."
+// After  
+className="... text-secondary-foreground ..."
+```
+
+**Line 563** - Export button:
+```tsx
+// Before
+className="... text-muted-foreground ..."
+// After
+className="... text-secondary-foreground ..."
 ```
 
 ---
 
-## What This Fixes
+## Visual Result
 
-1. **Button visibility** - Buttons at 55% lightness stand out clearly against 82% background (27% difference)
-2. **Button text** - White text (100%) on darker buttons (55%) = excellent contrast
-3. **Readable muted text** - 35% lightness text is easy to read
-4. **Clear hierarchy** - Each layer is visually distinct
-5. **Cards pop** - Cream cards (94%) stand out against light sage (82%)
+| Element | Before | After |
+|---------|--------|-------|
+| Background | Sage green (hard to read) | Warm cream-gray (easy on eyes) |
+| Primary buttons | Terracotta | Dark teal with white text |
+| Secondary buttons | Sage (fades into bg) | Dark slate with white text |
+| Button text | Sometimes dark on dark | Always white on dark buttons |
+| Cards | Cream (good) | Cream (unchanged) |
+
+---
+
+## Why This Works
+
+1. **Warm neutral background** - Cream-gray is easier to read than green
+2. **High contrast buttons** - Dark buttons (25% lightness) with white text (100%)
+3. **Consistent text colors** - All buttons get white text via CSS variables
+4. **No hardcoded overrides** - Button text uses `secondary-foreground` which maps to white
+
