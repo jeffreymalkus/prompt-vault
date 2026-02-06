@@ -15,6 +15,7 @@ import { PromptCard } from '../components/PromptCard';
 import { PromptModal } from '../components/PromptModal';
 import { SkillCard } from '../components/SkillCard';
 import { SkillModal } from '../components/SkillModal';
+import { SkillImportModal } from '../components/SkillImportModal';
 import { RunSkillModal } from '../components/RunSkillModal';
 import { NavigationTabs } from '../components/NavigationTabs';
 import { CapabilityView } from '../components/CapabilityView';
@@ -126,6 +127,7 @@ const Index: React.FC = () => {
   
   // SKILL MODALS
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
+  const [isSkillImportModalOpen, setIsSkillImportModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | undefined>(undefined);
   const [runningSkill, setRunningSkill] = useState<Skill | undefined>(undefined);
 
@@ -560,6 +562,32 @@ const Index: React.FC = () => {
     setEditingSkill(undefined);
   };
 
+  const handleImportSkill = (skill: Skill, newPrompts: AIPrompt[]) => {
+    // Add new prompts first
+    if (newPrompts.length > 0) {
+      setPrompts(prev => [...newPrompts, ...prev]);
+    }
+    
+    // Add the skill
+    setSkills(prev => [skill, ...prev]);
+    
+    // Add folder if new
+    if (skill.folder && !customFolders.includes(skill.folder) && skill.folder !== 'General') {
+      setCustomFolders(prev => [...prev, skill.folder]);
+    }
+    
+    const newPromptsCount = newPrompts.length;
+    const linkedCount = skill.embeddedPromptIds.length - newPromptsCount;
+    
+    if (linkedCount > 0 && newPromptsCount > 0) {
+      alert(`Skill "${skill.name}" imported with ${newPromptsCount} new prompt(s) and ${linkedCount} existing prompt(s) linked.`);
+    } else if (linkedCount > 0) {
+      alert(`Skill "${skill.name}" imported with ${linkedCount} existing prompt(s) linked.`);
+    } else {
+      alert(`Skill "${skill.name}" imported with ${newPromptsCount} new prompt(s).`);
+    }
+  };
+
   const handleDeleteSkill = (id: string) => {
     if (confirm('Delete this skill?')) {
       setSkills(prev => prev.filter(s => s.id !== id));
@@ -847,6 +875,16 @@ const Index: React.FC = () => {
                 </div>
               </>
             )}
+
+            {activeSection === 'skills' && (
+              <button 
+                onClick={() => setIsSkillImportModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
+              >
+                <Upload size={16} />
+                IMPORT
+              </button>
+            )}
              
             <div className="flex items-center gap-1 bg-muted p-1.5 rounded-lg">
               <button onClick={() => setViewMode(ViewMode.GRID)} className={`p-2 rounded-md transition-all ${viewMode === ViewMode.GRID ? 'bg-primary text-primary-foreground' : 'text-foreground/50 hover:text-foreground'}`}><Grid size={18} /></button>
@@ -1091,6 +1129,13 @@ const Index: React.FC = () => {
           onRunComplete={handleRunComplete}
         />
       )}
+
+      <SkillImportModal
+        isOpen={isSkillImportModalOpen}
+        onClose={() => setIsSkillImportModalOpen(false)}
+        onImport={handleImportSkill}
+        existingPrompts={latestPrompts}
+      />
     </div>
   );
 };
