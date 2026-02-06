@@ -1,13 +1,29 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { AIPrompt, DEFAULT_CATEGORIES, ViewMode } from '../types';
+import { 
+  AIPrompt, 
+  Skill, 
+  Workflow, 
+  Agent, 
+  ExecutionRun, 
+  DEFAULT_CATEGORIES, 
+  ViewMode, 
+  ActiveSection, 
+  NavigationView,
+  generateId 
+} from '../types';
 import { PromptCard } from '../components/PromptCard';
 import { PromptModal } from '../components/PromptModal';
+import { SkillCard } from '../components/SkillCard';
+import { SkillModal } from '../components/SkillModal';
+import { RunSkillModal } from '../components/RunSkillModal';
+import { NavigationTabs } from '../components/NavigationTabs';
+import { CapabilityView } from '../components/CapabilityView';
+import { ExecutionHistory } from '../components/ExecutionHistory';
 import { 
   Search, 
   Plus, 
   Grid, 
   Table as TableIcon,
-  Vault, 
   Layers,
   Zap,
   Copy,
@@ -23,7 +39,9 @@ import {
   FileSpreadsheet,
   Upload,
   Menu,
-  X
+  X,
+  GitBranch,
+  Bot
 } from 'lucide-react';
 
 // Robust CSV line parser that handles quoted fields with commas
@@ -38,11 +56,9 @@ function parseCSVLine(line: string): string[] {
     
     if (char === '"') {
       if (inQuotes && nextChar === '"') {
-        // Escaped quote
         current += '"';
         i++;
       } else {
-        // Toggle quote mode
         inQuotes = !inQuotes;
       }
     } else if (char === ',' && !inQuotes) {
@@ -84,6 +100,7 @@ function parseCSV(text: string): Partial<AIPrompt>[] {
 }
 
 const Index: React.FC = () => {
+  // PROMPTS STATE (existing)
   const [prompts, setPrompts] = useState<AIPrompt[]>([]);
   const [customFolders, setCustomFolders] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,15 +114,33 @@ const Index: React.FC = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load and seed
+  // NEW CAPABILITY LAYERS STATE
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [executionHistory, setExecutionHistory] = useState<ExecutionRun[]>([]);
+  
+  // NAVIGATION STATE
+  const [activeSection, setActiveSection] = useState<ActiveSection>('prompts');
+  const [navigationView, setNavigationView] = useState<NavigationView>('object');
+  
+  // SKILL MODALS
+  const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<Skill | undefined>(undefined);
+  const [runningSkill, setRunningSkill] = useState<Skill | undefined>(undefined);
+
+  // Load and seed prompts
   useEffect(() => {
     const savedPrompts = localStorage.getItem('prompt_vault_data_v2');
     const savedFolders = localStorage.getItem('prompt_vault_folders');
+    const savedSkills = localStorage.getItem('prompt_vault_skills');
+    const savedWorkflows = localStorage.getItem('prompt_vault_workflows');
+    const savedAgents = localStorage.getItem('prompt_vault_agents');
+    const savedHistory = localStorage.getItem('prompt_vault_execution_history');
     
     if (savedPrompts) {
       try {
-        const parsed = JSON.parse(savedPrompts);
-        setPrompts(parsed);
+        setPrompts(JSON.parse(savedPrompts));
       } catch (e) {
         console.error('Failed to load prompts', e);
       }
@@ -134,7 +169,7 @@ const Index: React.FC = () => {
           title: 'Step-by-Step Reasoning (CoT)',
           content: 'Solve the following: [PROBLEM]. Before answering, think through the solution step-by-step. Show your logical work for each transition.',
           description: 'Uses Chain-of-Thought to increase accuracy.',
-          notes: 'Critical for mathematical or complex logic tasks. Forcing internal monologue reduces hallucination.',
+          notes: 'Critical for mathematical or complex logic tasks.',
           category: 'Analysis',
           tags: ['logic', 'reasoning'],
           folder: 'Core Frameworks',
@@ -160,8 +195,45 @@ const Index: React.FC = () => {
     } else {
       setCustomFolders(['Core Frameworks', 'Development', 'Professional', 'Marketing', 'Education', 'Creative', 'General']);
     }
+
+    // Load skills
+    if (savedSkills) {
+      try {
+        setSkills(JSON.parse(savedSkills));
+      } catch (e) {
+        console.error('Failed to load skills', e);
+      }
+    }
+
+    // Load workflows
+    if (savedWorkflows) {
+      try {
+        setWorkflows(JSON.parse(savedWorkflows));
+      } catch (e) {
+        console.error('Failed to load workflows', e);
+      }
+    }
+
+    // Load agents
+    if (savedAgents) {
+      try {
+        setAgents(JSON.parse(savedAgents));
+      } catch (e) {
+        console.error('Failed to load agents', e);
+      }
+    }
+
+    // Load execution history
+    if (savedHistory) {
+      try {
+        setExecutionHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Failed to load execution history', e);
+      }
+    }
   }, []);
 
+  // Persist data
   useEffect(() => {
     localStorage.setItem('prompt_vault_data_v2', JSON.stringify(prompts));
   }, [prompts]);
@@ -170,11 +242,28 @@ const Index: React.FC = () => {
     localStorage.setItem('prompt_vault_folders', JSON.stringify(customFolders));
   }, [customFolders]);
 
+  useEffect(() => {
+    localStorage.setItem('prompt_vault_skills', JSON.stringify(skills));
+  }, [skills]);
+
+  useEffect(() => {
+    localStorage.setItem('prompt_vault_workflows', JSON.stringify(workflows));
+  }, [workflows]);
+
+  useEffect(() => {
+    localStorage.setItem('prompt_vault_agents', JSON.stringify(agents));
+  }, [agents]);
+
+  useEffect(() => {
+    localStorage.setItem('prompt_vault_execution_history', JSON.stringify(executionHistory));
+  }, [executionHistory]);
+
   const uniqueFolders = useMemo(() => {
     const fromPrompts = prompts.map(p => p.folder);
-    const combined = Array.from(new Set(['All', ...customFolders, ...fromPrompts]));
+    const fromSkills = skills.map(s => s.folder);
+    const combined = Array.from(new Set(['All', ...customFolders, ...fromPrompts, ...fromSkills]));
     return combined;
-  }, [prompts, customFolders]);
+  }, [prompts, skills, customFolders]);
 
   const groupedPrompts = useMemo(() => {
     const map = new Map<string, AIPrompt[]>();
@@ -219,6 +308,19 @@ const Index: React.FC = () => {
     }).sort((a, b) => b.createdAt - a.createdAt);
   }, [latestPrompts, searchQuery, activeCategory, activeFolder]);
 
+  const filteredSkills = useMemo(() => {
+    return skills.filter(s => {
+      const matchesSearch = 
+        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesCategory = activeCategory === 'All' || s.category === activeCategory;
+      const matchesFolder = activeFolder === 'All' || s.folder === activeFolder;
+      return matchesSearch && matchesCategory && matchesFolder;
+    }).sort((a, b) => b.createdAt - a.createdAt);
+  }, [skills, searchQuery, activeCategory, activeFolder]);
+
+  // PROMPT HANDLERS
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(prompts, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -281,7 +383,7 @@ const Index: React.FC = () => {
         try {
           const parsed = parseCSV(content);
           const imported: AIPrompt[] = parsed.map((p, index) => ({
-            id: Math.random().toString(36).substring(2, 9),
+            id: generateId(),
             title: p.title || 'Untitled',
             content: p.content || '',
             description: p.description || '',
@@ -309,12 +411,10 @@ const Index: React.FC = () => {
 
   const mergePrompts = (newPrompts: AIPrompt[]) => {
     setPrompts(prev => {
-      // Create a set of existing prompt signatures for duplicate detection
       const existingSignatures = new Set(
         prev.map(p => `${p.type}|${p.folder}|${p.title}|${p.content}`)
       );
       
-      // Filter out duplicates by matching type+folder+title+content
       const filtered = newPrompts.filter(p => {
         const signature = `${p.type}|${p.folder}|${p.title}|${p.content}`;
         return !existingSignatures.has(signature);
@@ -325,14 +425,14 @@ const Index: React.FC = () => {
       setCustomFolders(prevFolders => Array.from(new Set([...prevFolders, ...newFolders])));
       
       if (filtered.length === 0) {
-        alert('All prompts in the file already exist in your notebook (duplicates were skipped).');
+        alert('All prompts in the file already exist (duplicates were skipped).');
         return prev;
       }
       
       if (duplicateCount > 0) {
-        alert(`Successfully imported ${filtered.length} new prompts. ${duplicateCount} duplicate(s) were skipped.`);
+        alert(`Imported ${filtered.length} new prompts. ${duplicateCount} duplicate(s) skipped.`);
       } else {
-        alert(`Successfully imported ${filtered.length} new prompts.`);
+        alert(`Imported ${filtered.length} new prompts.`);
       }
       
       return [...filtered, ...prev];
@@ -344,7 +444,7 @@ const Index: React.FC = () => {
       setPrompts(prev => prev.map(p => p.id === editingPrompt.id ? { ...p, ...data } as AIPrompt : p));
     } else {
       const newPrompt: AIPrompt = {
-        id: Math.random().toString(36).substring(2, 9),
+        id: generateId(),
         title: data.title || 'Untitled',
         content: data.content || '',
         description: data.description || '',
@@ -423,22 +523,78 @@ const Index: React.FC = () => {
       const trimmed = newName.trim();
       setCustomFolders(prev => prev.map(f => f === oldName ? trimmed : f));
       setPrompts(prev => prev.map(p => p.folder === oldName ? { ...p, folder: trimmed } : p));
+      setSkills(prev => prev.map(s => s.folder === oldName ? { ...s, folder: trimmed } : s));
       if (activeFolder === oldName) setActiveFolder(trimmed);
     }
   };
 
   const handleDeleteFolder = (name: string) => {
     if (name === 'All') return;
-    const count = prompts.filter(p => p.folder === name).length;
-    if (count > 0) {
-      if (!confirm(`Folder "${name}" contains ${count} prompts. Move them to "General"?`)) return;
+    const promptCount = prompts.filter(p => p.folder === name).length;
+    const skillCount = skills.filter(s => s.folder === name).length;
+    const totalCount = promptCount + skillCount;
+    if (totalCount > 0) {
+      if (!confirm(`Folder "${name}" contains ${totalCount} items. Move them to "General"?`)) return;
       setPrompts(prev => prev.map(p => p.folder === name ? { ...p, folder: 'General' } : p));
+      setSkills(prev => prev.map(s => s.folder === name ? { ...s, folder: 'General' } : s));
     }
     setCustomFolders(prev => prev.filter(f => f !== name));
     if (activeFolder === name) setActiveFolder('All');
   };
 
-  // Close mobile sidebar when folder/category selected
+  // SKILL HANDLERS
+  const handleSaveSkill = (skill: Skill) => {
+    setSkills(prev => {
+      const existing = prev.find(s => s.id === skill.id);
+      if (existing) {
+        return prev.map(s => s.id === skill.id ? skill : s);
+      }
+      return [skill, ...prev];
+    });
+    
+    if (skill.folder && !customFolders.includes(skill.folder) && skill.folder !== 'General') {
+      setCustomFolders(prev => [...prev, skill.folder]);
+    }
+    
+    setIsSkillModalOpen(false);
+    setEditingSkill(undefined);
+  };
+
+  const handleDeleteSkill = (id: string) => {
+    if (confirm('Delete this skill?')) {
+      setSkills(prev => prev.filter(s => s.id !== id));
+    }
+  };
+
+  const handleEditSkill = (skill: Skill) => {
+    setEditingSkill(skill);
+    setIsSkillModalOpen(true);
+  };
+
+  const handleRunSkill = (skill: Skill) => {
+    setRunningSkill(skill);
+  };
+
+  const handleRunComplete = (run: ExecutionRun) => {
+    setExecutionHistory(prev => [run, ...prev]);
+    setSkills(prev => prev.map(s => 
+      s.id === run.objectId ? { ...s, usageCount: s.usageCount + 1, updatedAt: Date.now() } : s
+    ));
+  };
+
+  const toggleSkillPin = (id: string) => {
+    setSkills(prev => prev.map(s => 
+      s.id === id ? { ...s, isPinned: !s.isPinned } : s
+    ));
+  };
+
+  const handleClearHistory = () => {
+    if (confirm('Clear all execution history?')) {
+      setExecutionHistory([]);
+    }
+  };
+
+  // Navigation handlers
   const handleFolderSelect = (folder: string) => {
     setActiveFolder(folder);
     setMobileSidebarOpen(false);
@@ -449,7 +605,31 @@ const Index: React.FC = () => {
     setMobileSidebarOpen(false);
   };
 
-  // Sidebar content (shared between desktop and mobile)
+  const openNewSkill = () => {
+    setEditingSkill(undefined);
+    setIsSkillModalOpen(true);
+  };
+
+  // Get counts for navigation
+  const counts = {
+    prompts: latestPrompts.length,
+    skills: skills.length,
+    workflows: workflows.length,
+    agents: agents.length
+  };
+
+  // Get current section title
+  const getSectionTitle = () => {
+    switch (activeSection) {
+      case 'prompts': return activeFolder === 'All' ? 'All Prompts' : activeFolder;
+      case 'skills': return activeFolder === 'All' ? 'All Skills' : activeFolder;
+      case 'workflows': return 'Workflows';
+      case 'agents': return 'Agents';
+      case 'history': return 'Execution History';
+    }
+  };
+
+  // Sidebar content
   const sidebarContent = (
     <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
       <div className="flex items-center gap-3 mb-10">
@@ -460,17 +640,26 @@ const Index: React.FC = () => {
       </div>
       
       <nav className="space-y-10">
-        <div className="space-y-3">
+        {/* Create Buttons */}
+        <div className="space-y-2">
           <button 
-            onClick={() => { openManualUpload(); setMobileSidebarOpen(false); }}
+            onClick={() => { openManualUpload(); setMobileSidebarOpen(false); setActiveSection('prompts'); }}
             className="w-full flex items-center gap-3 px-5 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
           >
             <Plus size={18} />
             NEW PROMPT
           </button>
+          <button 
+            onClick={() => { openNewSkill(); setMobileSidebarOpen(false); setActiveSection('skills'); }}
+            className="w-full flex items-center gap-3 px-5 py-3.5 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            <Zap size={18} />
+            NEW SKILL
+          </button>
         </div>
 
-        {frequentlyUsed.length > 0 && (
+        {/* Quick Access */}
+        {frequentlyUsed.length > 0 && activeSection === 'prompts' && (
           <div>
             <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide mb-4 flex items-center gap-2">
               <Activity size={14} className="text-primary" /> Frequently Used
@@ -497,6 +686,7 @@ const Index: React.FC = () => {
           </div>
         )}
 
+        {/* Folders */}
         <div>
           <div className="flex items-center justify-between mb-4 group/header">
             <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide flex items-center gap-2">
@@ -522,7 +712,11 @@ const Index: React.FC = () => {
                     <span className="truncate">{folder}</span>
                   </span>
                   <span className="text-xs font-medium opacity-50 flex-shrink-0 ml-2">
-                    {prompts.filter(p => folder === 'All' || p.folder === folder).length}
+                    {folder === 'All' 
+                      ? (activeSection === 'skills' ? skills.length : prompts.length)
+                      : (activeSection === 'skills' 
+                          ? skills.filter(s => s.folder === folder).length 
+                          : prompts.filter(p => p.folder === folder).length)}
                   </span>
                 </button>
                 {folder !== 'All' && (
@@ -536,6 +730,7 @@ const Index: React.FC = () => {
           </div>
         </div>
 
+        {/* Categories */}
         <div>
           <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide mb-4 flex items-center gap-2">
             <Layers size={14} /> Categories
@@ -598,7 +793,7 @@ const Index: React.FC = () => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40 group-focus-within:text-primary transition-colors" size={18} />
             <input 
               type="text"
-              placeholder="Search library and notes..."
+              placeholder="Search library..."
               className="w-full bg-background border border-border rounded-full py-2.5 pl-12 pr-5 outline-none focus:ring-2 focus:ring-primary/30 transition-all text-sm text-foreground placeholder:text-foreground/40"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -606,155 +801,270 @@ const Index: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-             <input 
-               type="file" 
-               ref={fileInputRef} 
-               onChange={handleFileImport} 
-               accept=".json,.csv" 
-               className="hidden" 
-             />
-             <button 
-                onClick={handleImportClick}
-                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
-              >
-                <Upload size={16} />
-                IMPORT
-              </button>
+            {activeSection === 'prompts' && (
+              <>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileImport} 
+                  accept=".json,.csv" 
+                  className="hidden" 
+                />
+                <button 
+                  onClick={handleImportClick}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
+                >
+                  <Upload size={16} />
+                  IMPORT
+                </button>
 
-             <div className="relative">
-              <button 
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
-              >
-                <Download size={16} />
-                EXPORT
-              </button>
-              {showExportMenu && (
-                <div className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl shadow-card-hover z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="relative">
                   <button 
-                    onClick={handleExportJSON}
-                    className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors border-b border-border"
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
                   >
-                    <FileJson size={16} className="text-primary" />
-                    Export as JSON
+                    <Download size={16} />
+                    EXPORT
                   </button>
-                  <button 
-                    onClick={handleExportCSV}
-                    className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors"
-                  >
-                    <FileSpreadsheet size={16} className="text-accent" />
-                    Export as CSV
-                  </button>
+                  {showExportMenu && (
+                    <div className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl shadow-card-hover z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                      <button 
+                        onClick={handleExportJSON}
+                        className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors border-b border-border"
+                      >
+                        <FileJson size={16} className="text-primary" />
+                        Export as JSON
+                      </button>
+                      <button 
+                        onClick={handleExportCSV}
+                        className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+                      >
+                        <FileSpreadsheet size={16} className="text-accent" />
+                        Export as CSV
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
-             </div>
+              </>
+            )}
              
-             <div className="flex items-center gap-1 bg-muted p-1.5 rounded-lg">
+            <div className="flex items-center gap-1 bg-muted p-1.5 rounded-lg">
               <button onClick={() => setViewMode(ViewMode.GRID)} className={`p-2 rounded-md transition-all ${viewMode === ViewMode.GRID ? 'bg-primary text-primary-foreground' : 'text-foreground/50 hover:text-foreground'}`}><Grid size={18} /></button>
               <button onClick={() => setViewMode(ViewMode.TABLE)} className={`p-2 rounded-md transition-all ${viewMode === ViewMode.TABLE ? 'bg-primary text-primary-foreground' : 'text-foreground/50 hover:text-foreground'}`}><TableIcon size={18} /></button>
             </div>
             <div className="flex items-center gap-2 ml-4">
               <Zap className="text-primary" size={16} />
-              <span className="text-sm font-semibold text-foreground/60">{prompts.length} Prompts</span>
+              <span className="text-sm font-semibold text-foreground/60">
+                {activeSection === 'prompts' && `${filteredPrompts.length} Prompts`}
+                {activeSection === 'skills' && `${filteredSkills.length} Skills`}
+                {activeSection === 'workflows' && `${workflows.length} Workflows`}
+                {activeSection === 'agents' && `${agents.length} Agents`}
+              </span>
             </div>
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <h2 className="text-3xl font-bold text-foreground flex items-center gap-4">
-                  {activeFolder === 'All' ? 'All Prompts' : activeFolder}
-                  <span className="px-3 py-1 text-xs bg-primary/15 text-primary rounded-full font-semibold">
-                    {activeCategory}
-                  </span>
-                </h2>
-                <p className="text-foreground/60 text-base mt-2">Organize and manage your library.</p>
-              </div>
-            </div>
+            {/* Navigation Tabs */}
+            <NavigationTabs
+              activeSection={activeSection}
+              onSectionChange={setActiveSection}
+              navigationView={navigationView}
+              onViewChange={setNavigationView}
+              counts={counts}
+            />
 
-            {filteredPrompts.length > 0 ? (
+            {/* Capability View */}
+            {navigationView === 'capability' && (
+              <CapabilityView
+                prompts={latestPrompts}
+                skills={skills}
+                workflows={workflows}
+                agents={agents}
+                activeCategory={activeCategory}
+                onCategorySelect={handleCategorySelect}
+                onPromptClick={handleEdit}
+                onSkillClick={handleEditSkill}
+                onWorkflowClick={() => {}}
+                onAgentClick={() => {}}
+              />
+            )}
+
+            {/* Object View Content */}
+            {navigationView === 'object' && (
               <>
-                {viewMode === ViewMode.TABLE ? (
-                  <div className="overflow-hidden bg-card rounded-2xl shadow-soft">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-muted/50 border-b border-border">
-                          <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Type</th>
-                          <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Name</th>
-                          <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-center">Pin</th>
-                          <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {filteredPrompts.map(prompt => (
-                          <tr 
-                            key={prompt.id} 
-                            className="hover:bg-muted/30 transition-colors group cursor-pointer"
-                            onClick={() => handleEdit(prompt)}
-                          >
-                            <td className="p-5">
-                              <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${
-                                prompt.type === 'system' ? 'bg-primary text-primary-foreground' : 'bg-accent text-accent-foreground'
-                              }`}>
-                                {prompt.type}
-                              </span>
-                            </td>
-                            <td className="p-5">
-                              <div className="flex flex-col gap-1">
-                                <span className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">{prompt.title}</span>
-                                <span className="text-sm text-foreground/60">v{prompt.version} • {prompt.description}</span>
-                              </div>
-                            </td>
-                            <td className="p-5 text-center">
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); togglePin(prompt.id); }}
-                                className={`p-2.5 rounded-lg transition-all ${prompt.isPinned ? 'text-amber bg-amber/10' : 'text-foreground/40 hover:text-foreground'}`}
-                              >
-                                <Star size={16} fill={prompt.isPinned ? 'currentColor' : 'none'} />
-                              </button>
-                            </td>
-                            <td className="p-5 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); handleCopy(prompt); }} className={`p-2.5 rounded-lg transition-all ${lastCopiedId === prompt.id ? 'bg-primary/20 text-primary' : 'bg-muted text-foreground/60 hover:text-foreground'}`}><Check size={16} className={lastCopiedId === prompt.id ? 'block' : 'hidden'} /><Copy size={16} className={lastCopiedId === prompt.id ? 'hidden' : 'block'} /></button>
-                                <button onClick={(e) => { e.stopPropagation(); handleEdit(prompt); }} className="p-2.5 bg-muted text-foreground/60 hover:text-foreground rounded-lg transition-all"><Edit3 size={16} /></button>
-                                <button onClick={(e) => { e.stopPropagation(); handleDelete(prompt.id); }} className="p-2.5 bg-muted text-foreground/60 hover:text-destructive rounded-lg transition-all"><Trash2 size={16} /></button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {filteredPrompts.map(prompt => (
-                      <PromptCard 
-                        key={prompt.id} 
-                        prompt={prompt} 
-                        onEdit={handleEdit} 
-                        onDelete={handleDelete}
-                        onCopy={() => handleCopy(prompt)}
-                        onTogglePin={() => togglePin(prompt.id)}
-                        isCopied={lastCopiedId === prompt.id}
-                        versionCount={groupedPrompts.get(prompt.parentId || prompt.id)?.length}
-                      />
-                    ))}
+                {/* Section Header */}
+                {activeSection !== 'history' && (
+                  <div className="flex items-center justify-between mb-10">
+                    <div>
+                      <h2 className="text-3xl font-bold text-foreground flex items-center gap-4">
+                        {getSectionTitle()}
+                        <span className="px-3 py-1 text-xs bg-primary/15 text-primary rounded-full font-semibold">
+                          {activeCategory}
+                        </span>
+                      </h2>
+                      <p className="text-foreground/60 text-base mt-2">
+                        {activeSection === 'prompts' && 'Organize and manage your prompt library.'}
+                        {activeSection === 'skills' && 'Bundle prompts into reusable AI capabilities.'}
+                        {activeSection === 'workflows' && 'Chain skills into automated sequences.'}
+                        {activeSection === 'agents' && 'Deploy automated workflow executors.'}
+                      </p>
+                    </div>
                   </div>
                 )}
+
+                {/* PROMPTS SECTION */}
+                {activeSection === 'prompts' && (
+                  <>
+                    {filteredPrompts.length > 0 ? (
+                      <>
+                        {viewMode === ViewMode.TABLE ? (
+                          <div className="overflow-hidden bg-card rounded-2xl shadow-soft">
+                            <table className="w-full text-left border-collapse">
+                              <thead>
+                                <tr className="bg-muted/50 border-b border-border">
+                                  <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Type</th>
+                                  <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Name</th>
+                                  <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-center">Pin</th>
+                                  <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border">
+                                {filteredPrompts.map(prompt => (
+                                  <tr 
+                                    key={prompt.id} 
+                                    className="hover:bg-muted/30 transition-colors group cursor-pointer"
+                                    onClick={() => handleEdit(prompt)}
+                                  >
+                                    <td className="p-5">
+                                      <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${
+                                        prompt.type === 'system' ? 'bg-primary text-primary-foreground' : 'bg-accent text-accent-foreground'
+                                      }`}>
+                                        {prompt.type}
+                                      </span>
+                                    </td>
+                                    <td className="p-5">
+                                      <div className="flex flex-col gap-1">
+                                        <span className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">{prompt.title}</span>
+                                        <span className="text-sm text-foreground/60">v{prompt.version} • {prompt.description}</span>
+                                      </div>
+                                    </td>
+                                    <td className="p-5 text-center">
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); togglePin(prompt.id); }}
+                                        className={`p-2.5 rounded-lg transition-all ${prompt.isPinned ? 'text-amber bg-amber/10' : 'text-foreground/40 hover:text-foreground'}`}
+                                      >
+                                        <Star size={16} fill={prompt.isPinned ? 'currentColor' : 'none'} />
+                                      </button>
+                                    </td>
+                                    <td className="p-5 text-right">
+                                      <div className="flex items-center justify-end gap-2">
+                                        <button onClick={(e) => { e.stopPropagation(); handleCopy(prompt); }} className={`p-2.5 rounded-lg transition-all ${lastCopiedId === prompt.id ? 'bg-primary/20 text-primary' : 'bg-muted text-foreground/60 hover:text-foreground'}`}><Check size={16} className={lastCopiedId === prompt.id ? 'block' : 'hidden'} /><Copy size={16} className={lastCopiedId === prompt.id ? 'hidden' : 'block'} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleEdit(prompt); }} className="p-2.5 bg-muted text-foreground/60 hover:text-foreground rounded-lg transition-all"><Edit3 size={16} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDelete(prompt.id); }} className="p-2.5 bg-muted text-foreground/60 hover:text-destructive rounded-lg transition-all"><Trash2 size={16} /></button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {filteredPrompts.map(prompt => (
+                              <PromptCard 
+                                key={prompt.id} 
+                                prompt={prompt} 
+                                onEdit={handleEdit} 
+                                onDelete={handleDelete}
+                                onCopy={() => handleCopy(prompt)}
+                                onTogglePin={() => togglePin(prompt.id)}
+                                isCopied={lastCopiedId === prompt.id}
+                                versionCount={groupedPrompts.get(prompt.parentId || prompt.id)?.length}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
+                        <Search size={48} className="text-foreground/20 mb-6" />
+                        <h3 className="text-2xl font-bold mb-2 text-foreground">No prompts found</h3>
+                        <p className="text-foreground/60 text-base">Refine your search or add a new prompt.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* SKILLS SECTION */}
+                {activeSection === 'skills' && (
+                  <>
+                    {filteredSkills.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {filteredSkills.map(skill => (
+                          <SkillCard
+                            key={skill.id}
+                            skill={skill}
+                            promptCount={skill.embeddedPromptIds.length}
+                            onEdit={handleEditSkill}
+                            onDelete={handleDeleteSkill}
+                            onRun={handleRunSkill}
+                            onTogglePin={() => toggleSkillPin(skill.id)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
+                        <Zap size={48} className="text-foreground/20 mb-6" />
+                        <h3 className="text-2xl font-bold mb-2 text-foreground">No skills yet</h3>
+                        <p className="text-foreground/60 text-base mb-6">Create your first skill to bundle prompts into a reusable capability.</p>
+                        <button 
+                          onClick={openNewSkill}
+                          className="flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all"
+                        >
+                          <Plus size={18} />
+                          CREATE SKILL
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* WORKFLOWS SECTION (Placeholder) */}
+                {activeSection === 'workflows' && (
+                  <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
+                    <GitBranch size={48} className="text-foreground/20 mb-6" />
+                    <h3 className="text-2xl font-bold mb-2 text-foreground">Workflows Coming Soon</h3>
+                    <p className="text-foreground/60 text-base">Chain skills into automated sequences.</p>
+                    <p className="text-foreground/40 text-sm mt-2">Phase 2 implementation</p>
+                  </div>
+                )}
+
+                {/* AGENTS SECTION (Placeholder) */}
+                {activeSection === 'agents' && (
+                  <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
+                    <Bot size={48} className="text-foreground/20 mb-6" />
+                    <h3 className="text-2xl font-bold mb-2 text-foreground">Agents Coming Soon</h3>
+                    <p className="text-foreground/60 text-base">Deploy automated workflow executors.</p>
+                    <p className="text-foreground/40 text-sm mt-2">Phase 3 implementation</p>
+                  </div>
+                )}
+
+                {/* HISTORY SECTION */}
+                {activeSection === 'history' && (
+                  <ExecutionHistory
+                    runs={executionHistory}
+                    onClearHistory={handleClearHistory}
+                  />
+                )}
               </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
-                <Search size={48} className="text-foreground/20 mb-6" />
-                <h3 className="text-2xl font-bold mb-2 text-foreground">No prompts found</h3>
-                <p className="text-foreground/60 text-base">Refine your search or try adding a new workflow.</p>
-              </div>
             )}
           </div>
         </div>
       </main>
 
+      {/* Modals */}
       <PromptModal 
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setEditingPrompt(undefined); }}
@@ -762,6 +1072,25 @@ const Index: React.FC = () => {
         prompt={editingPrompt}
         availableFolders={customFolders}
       />
+
+      <SkillModal
+        isOpen={isSkillModalOpen}
+        onClose={() => { setIsSkillModalOpen(false); setEditingSkill(undefined); }}
+        onSave={handleSaveSkill}
+        skill={editingSkill}
+        availableFolders={customFolders}
+        availablePrompts={latestPrompts}
+      />
+
+      {runningSkill && (
+        <RunSkillModal
+          isOpen={!!runningSkill}
+          onClose={() => setRunningSkill(undefined)}
+          skill={runningSkill}
+          prompts={latestPrompts}
+          onRunComplete={handleRunComplete}
+        />
+      )}
     </div>
   );
 };
