@@ -92,6 +92,7 @@ export interface Agent {
   tags: string[];
   createdAt: number;
   updatedAt: number;
+  isPinned?: boolean;
 }
 
 // ===============================
