@@ -17,6 +17,13 @@ import { SkillCard } from '../components/SkillCard';
 import { SkillModal } from '../components/SkillModal';
 import { SkillImportModal } from '../components/SkillImportModal';
 import { RunSkillModal } from '../components/RunSkillModal';
+import { WorkflowCard } from '../components/WorkflowCard';
+import { WorkflowModal } from '../components/WorkflowModal';
+import { WorkflowImportModal } from '../components/WorkflowImportModal';
+import { RunWorkflowModal } from '../components/RunWorkflowModal';
+import { AgentCard } from '../components/AgentCard';
+import { AgentModal } from '../components/AgentModal';
+import { AgentImportModal } from '../components/AgentImportModal';
 import { NavigationTabs } from '../components/NavigationTabs';
 import { CapabilityView } from '../components/CapabilityView';
 import { ExecutionHistory } from '../components/ExecutionHistory';
@@ -130,6 +137,17 @@ const Index: React.FC = () => {
   const [isSkillImportModalOpen, setIsSkillImportModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | undefined>(undefined);
   const [runningSkill, setRunningSkill] = useState<Skill | undefined>(undefined);
+  
+  // WORKFLOW MODALS
+  const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
+  const [isWorkflowImportModalOpen, setIsWorkflowImportModalOpen] = useState(false);
+  const [editingWorkflow, setEditingWorkflow] = useState<Workflow | undefined>(undefined);
+  const [runningWorkflow, setRunningWorkflow] = useState<Workflow | undefined>(undefined);
+  
+  // AGENT MODALS
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+  const [isAgentImportModalOpen, setIsAgentImportModalOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<Agent | undefined>(undefined);
 
   // Load and seed prompts
   useEffect(() => {
@@ -263,9 +281,11 @@ const Index: React.FC = () => {
   const uniqueFolders = useMemo(() => {
     const fromPrompts = prompts.map(p => p.folder);
     const fromSkills = skills.map(s => s.folder);
-    const combined = Array.from(new Set(['All', ...customFolders, ...fromPrompts, ...fromSkills]));
+    const fromWorkflows = workflows.map(w => w.folder);
+    const fromAgents = agents.map(a => a.folder);
+    const combined = Array.from(new Set(['All', ...customFolders, ...fromPrompts, ...fromSkills, ...fromWorkflows, ...fromAgents]));
     return combined;
-  }, [prompts, skills, customFolders]);
+  }, [prompts, skills, workflows, agents, customFolders]);
 
   const groupedPrompts = useMemo(() => {
     const map = new Map<string, AIPrompt[]>();
@@ -321,6 +341,30 @@ const Index: React.FC = () => {
       return matchesSearch && matchesCategory && matchesFolder;
     }).sort((a, b) => b.createdAt - a.createdAt);
   }, [skills, searchQuery, activeCategory, activeFolder]);
+
+  const filteredWorkflows = useMemo(() => {
+    return workflows.filter(w => {
+      const matchesSearch = 
+        w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        w.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        w.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesCategory = activeCategory === 'All' || w.category === activeCategory;
+      const matchesFolder = activeFolder === 'All' || w.folder === activeFolder;
+      return matchesSearch && matchesCategory && matchesFolder;
+    }).sort((a, b) => b.createdAt - a.createdAt);
+  }, [workflows, searchQuery, activeCategory, activeFolder]);
+
+  const filteredAgents = useMemo(() => {
+    return agents.filter(a => {
+      const matchesSearch = 
+        a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesCategory = activeCategory === 'All' || a.category === activeCategory;
+      const matchesFolder = activeFolder === 'All' || a.folder === activeFolder;
+      return matchesSearch && matchesCategory && matchesFolder;
+    }).sort((a, b) => b.createdAt - a.createdAt);
+  }, [agents, searchQuery, activeCategory, activeFolder]);
 
   // PROMPT HANDLERS
   const handleExportJSON = () => {
@@ -605,9 +649,15 @@ const Index: React.FC = () => {
 
   const handleRunComplete = (run: ExecutionRun) => {
     setExecutionHistory(prev => [run, ...prev]);
-    setSkills(prev => prev.map(s => 
-      s.id === run.objectId ? { ...s, usageCount: s.usageCount + 1, updatedAt: Date.now() } : s
-    ));
+    if (run.objectType === 'skill') {
+      setSkills(prev => prev.map(s => 
+        s.id === run.objectId ? { ...s, usageCount: s.usageCount + 1, updatedAt: Date.now() } : s
+      ));
+    } else if (run.objectType === 'workflow') {
+      setWorkflows(prev => prev.map(w => 
+        w.id === run.objectId ? { ...w, usageCount: w.usageCount + 1, updatedAt: Date.now() } : w
+      ));
+    }
   };
 
   const toggleSkillPin = (id: string) => {
@@ -620,6 +670,118 @@ const Index: React.FC = () => {
     if (confirm('Clear all execution history?')) {
       setExecutionHistory([]);
     }
+  };
+
+  // WORKFLOW HANDLERS
+  const handleSaveWorkflow = (workflow: Workflow) => {
+    setWorkflows(prev => {
+      const existing = prev.find(w => w.id === workflow.id);
+      if (existing) {
+        return prev.map(w => w.id === workflow.id ? workflow : w);
+      }
+      return [workflow, ...prev];
+    });
+    
+    if (workflow.folder && !customFolders.includes(workflow.folder) && workflow.folder !== 'General') {
+      setCustomFolders(prev => [...prev, workflow.folder]);
+    }
+    
+    setIsWorkflowModalOpen(false);
+    setEditingWorkflow(undefined);
+  };
+
+  const handleImportWorkflow = (workflow: Workflow, matchedSkillIds: string[]) => {
+    setWorkflows(prev => [workflow, ...prev]);
+    
+    if (workflow.folder && !customFolders.includes(workflow.folder) && workflow.folder !== 'General') {
+      setCustomFolders(prev => [...prev, workflow.folder]);
+    }
+    
+    alert(`Workflow "${workflow.name}" imported with ${matchedSkillIds.length} skill(s) linked.`);
+  };
+
+  const handleDeleteWorkflow = (id: string) => {
+    if (confirm('Delete this workflow?')) {
+      setWorkflows(prev => prev.filter(w => w.id !== id));
+    }
+  };
+
+  const handleEditWorkflow = (workflow: Workflow) => {
+    setEditingWorkflow(workflow);
+    setIsWorkflowModalOpen(true);
+  };
+
+  const handleRunWorkflow = (workflow: Workflow) => {
+    setRunningWorkflow(workflow);
+  };
+
+  const toggleWorkflowPin = (id: string) => {
+    setWorkflows(prev => prev.map(w => 
+      w.id === id ? { ...w, isPinned: !w.isPinned } : w
+    ));
+  };
+
+  const openNewWorkflow = () => {
+    setEditingWorkflow(undefined);
+    setIsWorkflowModalOpen(true);
+  };
+
+  // AGENT HANDLERS
+  const handleSaveAgent = (agent: Agent) => {
+    setAgents(prev => {
+      const existing = prev.find(a => a.id === agent.id);
+      if (existing) {
+        return prev.map(a => a.id === agent.id ? agent : a);
+      }
+      return [agent, ...prev];
+    });
+    
+    if (agent.folder && !customFolders.includes(agent.folder) && agent.folder !== 'General') {
+      setCustomFolders(prev => [...prev, agent.folder]);
+    }
+    
+    setIsAgentModalOpen(false);
+    setEditingAgent(undefined);
+  };
+
+  const handleImportAgent = (agent: Agent) => {
+    setAgents(prev => [agent, ...prev]);
+    
+    if (agent.folder && !customFolders.includes(agent.folder) && agent.folder !== 'General') {
+      setCustomFolders(prev => [...prev, agent.folder]);
+    }
+    
+    alert(`Agent "${agent.name}" imported successfully.`);
+  };
+
+  const handleDeleteAgent = (id: string) => {
+    if (confirm('Delete this agent?')) {
+      setAgents(prev => prev.filter(a => a.id !== id));
+    }
+  };
+
+  const handleEditAgent = (agent: Agent) => {
+    setEditingAgent(agent);
+    setIsAgentModalOpen(true);
+  };
+
+  const handleToggleAgentStatus = (agent: Agent) => {
+    setAgents(prev => prev.map(a => 
+      a.id === agent.id 
+        ? { ...a, status: a.status === 'active' ? 'paused' : 'active', updatedAt: Date.now() } 
+        : a
+    ));
+  };
+
+  const toggleAgentPin = (id: string) => {
+    setAgents(prev => prev.map(a => 
+      a.id === id ? { ...a, isPinned: !a.isPinned } : a
+    ));
+  };
+
+  const openNewAgent = () => {
+    setEditingAgent(undefined);
+    setIsAgentModalOpen(true);
   };
 
   // Navigation handlers
@@ -683,6 +845,20 @@ const Index: React.FC = () => {
           >
             <Zap size={18} />
             NEW SKILL
+          </button>
+          <button 
+            onClick={() => { openNewWorkflow(); setMobileSidebarOpen(false); setActiveSection('workflows'); }}
+            className="w-full flex items-center gap-3 px-5 py-3.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            <GitBranch size={18} />
+            NEW WORKFLOW
+          </button>
+          <button 
+            onClick={() => { openNewAgent(); setMobileSidebarOpen(false); setActiveSection('agents'); }}
+            className="w-full flex items-center gap-3 px-5 py-3.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            <Bot size={18} />
+            NEW AGENT
           </button>
         </div>
 
@@ -885,6 +1061,26 @@ const Index: React.FC = () => {
                 IMPORT
               </button>
             )}
+
+            {activeSection === 'workflows' && (
+              <button 
+                onClick={() => setIsWorkflowImportModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
+              >
+                <Upload size={16} />
+                IMPORT
+              </button>
+            )}
+
+            {activeSection === 'agents' && (
+              <button 
+                onClick={() => setIsAgentImportModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
+              >
+                <Upload size={16} />
+                IMPORT
+              </button>
+            )}
              
             <div className="flex items-center gap-1 bg-muted p-1.5 rounded-lg">
               <button onClick={() => setViewMode(ViewMode.GRID)} className={`p-2 rounded-md transition-all ${viewMode === ViewMode.GRID ? 'bg-primary text-primary-foreground' : 'text-foreground/50 hover:text-foreground'}`}><Grid size={18} /></button>
@@ -895,8 +1091,8 @@ const Index: React.FC = () => {
               <span className="text-sm font-semibold text-foreground/60">
                 {activeSection === 'prompts' && `${filteredPrompts.length} Prompts`}
                 {activeSection === 'skills' && `${filteredSkills.length} Skills`}
-                {activeSection === 'workflows' && `${workflows.length} Workflows`}
-                {activeSection === 'agents' && `${agents.length} Agents`}
+                {activeSection === 'workflows' && `${filteredWorkflows.length} Workflows`}
+                {activeSection === 'agents' && `${filteredAgents.length} Agents`}
               </span>
             </div>
           </div>
@@ -1069,24 +1265,72 @@ const Index: React.FC = () => {
                   </>
                 )}
 
-                {/* WORKFLOWS SECTION (Placeholder) */}
+                {/* WORKFLOWS SECTION */}
                 {activeSection === 'workflows' && (
-                  <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
-                    <GitBranch size={48} className="text-foreground/20 mb-6" />
-                    <h3 className="text-2xl font-bold mb-2 text-foreground">Workflows Coming Soon</h3>
-                    <p className="text-foreground/60 text-base">Chain skills into automated sequences.</p>
-                    <p className="text-foreground/40 text-sm mt-2">Phase 2 implementation</p>
-                  </div>
+                  <>
+                    {filteredWorkflows.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {filteredWorkflows.map(workflow => (
+                          <WorkflowCard
+                            key={workflow.id}
+                            workflow={workflow}
+                            skillCount={workflow.skillIds.length}
+                            onEdit={handleEditWorkflow}
+                            onDelete={handleDeleteWorkflow}
+                            onRun={handleRunWorkflow}
+                            onTogglePin={() => toggleWorkflowPin(workflow.id)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
+                        <GitBranch size={48} className="text-foreground/20 mb-6" />
+                        <h3 className="text-2xl font-bold mb-2 text-foreground">No workflows yet</h3>
+                        <p className="text-foreground/60 text-base mb-6">Chain skills into automated sequences.</p>
+                        <button 
+                          onClick={openNewWorkflow}
+                          className="flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all"
+                        >
+                          <Plus size={18} />
+                          CREATE WORKFLOW
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {/* AGENTS SECTION (Placeholder) */}
+                {/* AGENTS SECTION */}
                 {activeSection === 'agents' && (
-                  <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
-                    <Bot size={48} className="text-foreground/20 mb-6" />
-                    <h3 className="text-2xl font-bold mb-2 text-foreground">Agents Coming Soon</h3>
-                    <p className="text-foreground/60 text-base">Deploy automated workflow executors.</p>
-                    <p className="text-foreground/40 text-sm mt-2">Phase 3 implementation</p>
-                  </div>
+                  <>
+                    {filteredAgents.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {filteredAgents.map(agent => (
+                          <AgentCard
+                            key={agent.id}
+                            agent={agent}
+                            workflowName={workflows.find(w => w.id === agent.linkedWorkflowId)?.name}
+                            onEdit={handleEditAgent}
+                            onDelete={handleDeleteAgent}
+                            onToggleStatus={handleToggleAgentStatus}
+                            onTogglePin={() => toggleAgentPin(agent.id)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
+                        <Bot size={48} className="text-foreground/20 mb-6" />
+                        <h3 className="text-2xl font-bold mb-2 text-foreground">No agents yet</h3>
+                        <p className="text-foreground/60 text-base mb-6">Deploy automated workflow executors.</p>
+                        <button 
+                          onClick={openNewAgent}
+                          className="flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all"
+                        >
+                          <Plus size={18} />
+                          CREATE AGENT
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* HISTORY SECTION */}
@@ -1135,6 +1379,49 @@ const Index: React.FC = () => {
         onClose={() => setIsSkillImportModalOpen(false)}
         onImport={handleImportSkill}
         existingPrompts={latestPrompts}
+      />
+
+      <WorkflowModal
+        isOpen={isWorkflowModalOpen}
+        onClose={() => { setIsWorkflowModalOpen(false); setEditingWorkflow(undefined); }}
+        onSave={handleSaveWorkflow}
+        workflow={editingWorkflow}
+        availableFolders={customFolders}
+        availableSkills={skills}
+      />
+
+      {runningWorkflow && (
+        <RunWorkflowModal
+          isOpen={!!runningWorkflow}
+          onClose={() => setRunningWorkflow(undefined)}
+          workflow={runningWorkflow}
+          skills={skills}
+          prompts={latestPrompts}
+          onRunComplete={handleRunComplete}
+        />
+      )}
+
+      <WorkflowImportModal
+        isOpen={isWorkflowImportModalOpen}
+        onClose={() => setIsWorkflowImportModalOpen(false)}
+        onImport={handleImportWorkflow}
+        existingSkills={skills}
+      />
+
+      <AgentModal
+        isOpen={isAgentModalOpen}
+        onClose={() => { setIsAgentModalOpen(false); setEditingAgent(undefined); }}
+        onSave={handleSaveAgent}
+        agent={editingAgent}
+        availableFolders={customFolders}
+        availableWorkflows={workflows}
+      />
+
+      <AgentImportModal
+        isOpen={isAgentImportModalOpen}
+        onClose={() => setIsAgentImportModalOpen(false)}
+        onImport={handleImportAgent}
+        existingWorkflows={workflows}
       />
     </div>
   );
