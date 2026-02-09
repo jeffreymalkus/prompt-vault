@@ -102,7 +102,7 @@ export interface Agent {
 export interface PromptVersionSnapshot {
   id: string;
   promptId: string; // parentId or original id
-  content: string;
+  content: string; // template text with brackets intact
   title: string;
   description: string;
   tags: string[];
@@ -111,6 +111,8 @@ export interface PromptVersionSnapshot {
   commitMessage: string;
   createdAt: number;
   version: number;
+  versionName?: string; // user-given name like "Expert Marketing Version"
+  variableValues?: Record<string, string>; // saved variable inputs
 }
 
 // ===============================
