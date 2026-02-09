@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AIPrompt, DEFAULT_CATEGORIES, PromptType, detectVariables } from '../types';
-import { X, Layers, User, Cpu, BookOpen, ChevronDown } from 'lucide-react';
+import { X, Layers, User, Cpu, BookOpen, ChevronDown, Clock } from 'lucide-react';
 
 interface PromptModalProps {
   prompt?: AIPrompt;
@@ -8,6 +8,7 @@ interface PromptModalProps {
   onClose: () => void;
   onSave: (prompt: Partial<AIPrompt>, saveAsNewVersion: boolean, commitMessage?: string) => void;
   availableFolders?: string[];
+  onOpenHistory?: () => void;
 }
 
 export const PromptModal: React.FC<PromptModalProps> = ({ 
@@ -15,7 +16,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   isOpen, 
   onClose, 
   onSave, 
-  availableFolders = []
+  availableFolders = [],
+  onOpenHistory
 }) => {
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
@@ -99,9 +101,21 @@ export const PromptModal: React.FC<PromptModalProps> = ({
             </h2>
             <p className="text-xs text-muted-foreground">Fill out the fields to organize your prompt.</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full text-muted-foreground transition-colors">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {prompt && onOpenHistory && (
+              <button
+                type="button"
+                onClick={onOpenHistory}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-muted-foreground hover:text-primary hover:bg-muted rounded-lg transition-colors"
+              >
+                <Clock size={14} />
+                HISTORY
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 hover:bg-muted rounded-full text-muted-foreground transition-colors">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <form className="p-6 space-y-6">

@@ -1501,6 +1501,7 @@ const Index: React.FC = () => {
         onSave={handleSavePrompt}
         prompt={editingPrompt}
         availableFolders={customFolders}
+        onOpenHistory={editingPrompt ? () => setHistoryPrompt(editingPrompt) : undefined}
       />
 
       <SkillModal
