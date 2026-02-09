@@ -24,6 +24,8 @@ import { RunWorkflowModal } from '../components/RunWorkflowModal';
 import { AgentCard } from '../components/AgentCard';
 import { AgentModal } from '../components/AgentModal';
 import { AgentImportModal } from '../components/AgentImportModal';
+import { SmartImportModal } from '../components/SmartImportModal';
+import { PromptDetailModal } from '../components/PromptDetailModal';
 import { NavigationTabs } from '../components/NavigationTabs';
 import { CapabilityView } from '../components/CapabilityView';
 import { ExecutionHistory } from '../components/ExecutionHistory';
@@ -49,7 +51,8 @@ import {
   Menu,
   X,
   GitBranch,
-  Bot
+  Bot,
+  Wand2
 } from 'lucide-react';
 
 // Robust CSV line parser that handles quoted fields with commas
@@ -148,6 +151,10 @@ const Index: React.FC = () => {
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
   const [isAgentImportModalOpen, setIsAgentImportModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | undefined>(undefined);
+  
+  // SMART IMPORT & DETAIL
+  const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
+  const [detailPrompt, setDetailPrompt] = useState<AIPrompt | undefined>(undefined);
 
   // Load and seed prompts
   useEffect(() => {
@@ -550,6 +557,17 @@ const Index: React.FC = () => {
   const openManualUpload = () => {
     setEditingPrompt(undefined);
     setIsModalOpen(true);
+  };
+
+  const handleSmartImport = (prompt: AIPrompt) => {
+    setPrompts(prev => [prompt, ...prev]);
+    if (prompt.folder && !customFolders.includes(prompt.folder) && prompt.folder !== 'General') {
+      setCustomFolders(prev => [...prev, prompt.folder]);
+    }
+  };
+
+  const handlePromptDetailClick = (prompt: AIPrompt) => {
+    setDetailPrompt(prompt);
   };
 
   const handleCreateFolder = () => {
@@ -1015,6 +1033,13 @@ const Index: React.FC = () => {
                   className="hidden" 
                 />
                 <button 
+                  onClick={() => setIsSmartImportOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent/90 rounded-lg text-sm font-bold text-accent-foreground transition-all"
+                >
+                  <Wand2 size={16} />
+                  MAGIC IMPORT
+                </button>
+                <button 
                   onClick={handleImportClick}
                   className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
                 >
@@ -1216,6 +1241,7 @@ const Index: React.FC = () => {
                                 onTogglePin={() => togglePin(prompt.id)}
                                 isCopied={lastCopiedId === prompt.id}
                                 versionCount={groupedPrompts.get(prompt.parentId || prompt.id)?.length}
+                                onClick={() => handlePromptDetailClick(prompt)}
                               />
                             ))}
                           </div>
@@ -1423,6 +1449,21 @@ const Index: React.FC = () => {
         onImport={handleImportAgent}
         existingWorkflows={workflows}
       />
+
+      <SmartImportModal
+        isOpen={isSmartImportOpen}
+        onClose={() => setIsSmartImportOpen(false)}
+        onImport={handleSmartImport}
+        availableFolders={customFolders}
+      />
+
+      {detailPrompt && (
+        <PromptDetailModal
+          isOpen={!!detailPrompt}
+          onClose={() => setDetailPrompt(undefined)}
+          prompt={detailPrompt}
+        />
+      )}
     </div>
   );
 };
