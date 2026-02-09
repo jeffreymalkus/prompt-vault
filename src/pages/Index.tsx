@@ -161,6 +161,7 @@ const Index: React.FC = () => {
   // VERSION HISTORY
   const [versionSnapshots, setVersionSnapshots] = useState<PromptVersionSnapshot[]>([]);
   const [historyPrompt, setHistoryPrompt] = useState<AIPrompt | undefined>(undefined);
+  const [detailVarValues, setDetailVarValues] = useState<Record<string, string>>({});
 
   // Load and seed prompts
   useEffect(() => {
@@ -568,7 +569,6 @@ const Index: React.FC = () => {
   };
 
   const handleRestoreVersion = (snapshot: PromptVersionSnapshot) => {
-    // Find the current prompt for this snapshot
     const currentPrompt = prompts.find(p => (p.parentId || p.id) === snapshot.promptId);
     if (!currentPrompt) return;
     
@@ -587,12 +587,63 @@ const Index: React.FC = () => {
     if (detailPrompt?.id === currentPrompt.id) {
       setDetailPrompt(updated);
     }
+    // Hydrate variable values from snapshot
+    setDetailVarValues(snapshot.variableValues || {});
     setHistoryPrompt(undefined);
   };
 
   const getVersionsForPrompt = (prompt: AIPrompt): PromptVersionSnapshot[] => {
     const key = prompt.parentId || prompt.id;
     return versionSnapshots.filter(s => s.promptId === key);
+  };
+
+  const handleDeleteVersion = (snapshotId: string) => {
+    setVersionSnapshots(prev => prev.filter(s => s.id !== snapshotId));
+  };
+
+  const handleSelectVersion = (snapshot: PromptVersionSnapshot) => {
+    // Just hydrate variable values — no version creation
+    setDetailVarValues(snapshot.variableValues || {});
+  };
+
+  const handleUpdateCurrent = (promptObj: AIPrompt, varValues: Record<string, string>) => {
+    // Snapshot current state, then update with current var values saved
+    createVersionSnapshot(promptObj, 'Updated current');
+    // Save variable values into the latest snapshot
+    setVersionSnapshots(prev => {
+      const latest = prev[0];
+      if (latest) {
+        return [{ ...latest, variableValues: varValues }, ...prev.slice(1)];
+      }
+      return prev;
+    });
+  };
+
+  const handleSaveNewVersion = (promptObj: AIPrompt, varValues: Record<string, string>, versionName: string) => {
+    const snapshot: PromptVersionSnapshot = {
+      id: generateId(),
+      promptId: promptObj.parentId || promptObj.id,
+      content: promptObj.content,
+      title: promptObj.title,
+      description: promptObj.description,
+      tags: [...promptObj.tags],
+      category: promptObj.category,
+      folder: promptObj.folder,
+      commitMessage: versionName,
+      versionName,
+      createdAt: Date.now(),
+      version: promptObj.version + 1,
+      variableValues: { ...varValues },
+    };
+    setVersionSnapshots(prev => [snapshot, ...prev]);
+    
+    // Increment prompt version
+    setPrompts(prev => prev.map(p => 
+      p.id === promptObj.id ? { ...p, version: p.version + 1 } : p
+    ));
+    if (detailPrompt?.id === promptObj.id) {
+      setDetailPrompt(prev => prev ? { ...prev, version: prev.version + 1 } : prev);
+    }
   };
 
   const handleCopy = (prompt: AIPrompt) => {
@@ -1531,9 +1582,12 @@ const Index: React.FC = () => {
       {detailPrompt && (
         <PromptDetailModal
           isOpen={!!detailPrompt}
-          onClose={() => setDetailPrompt(undefined)}
+          onClose={() => { setDetailPrompt(undefined); setDetailVarValues({}); }}
           prompt={detailPrompt}
           onOpenHistory={() => setHistoryPrompt(detailPrompt)}
+          onUpdateCurrent={handleUpdateCurrent}
+          onSaveNewVersion={handleSaveNewVersion}
+          initialVarValues={detailVarValues}
         />
       )}
 
@@ -1544,6 +1598,8 @@ const Index: React.FC = () => {
           versions={getVersionsForPrompt(historyPrompt)}
           onClose={() => setHistoryPrompt(undefined)}
           onRestore={handleRestoreVersion}
+          onDeleteVersion={handleDeleteVersion}
+          onSelectVersion={handleSelectVersion}
         />
       )}
     </div>

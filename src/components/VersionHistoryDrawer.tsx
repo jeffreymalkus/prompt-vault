@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { AIPrompt, PromptVersionSnapshot } from '../types';
-import { X, RotateCcw, Clock, GitCommit, ChevronRight } from 'lucide-react';
+import { X, RotateCcw, Clock, GitCommit, ChevronRight, Trash2 } from 'lucide-react';
 import { diffWords } from 'diff';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent } from './ui/card';
@@ -11,6 +11,8 @@ interface VersionHistoryDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onRestore: (snapshot: PromptVersionSnapshot) => void;
+  onDeleteVersion?: (snapshotId: string) => void;
+  onSelectVersion?: (snapshot: PromptVersionSnapshot) => void;
 }
 
 function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
@@ -45,6 +47,8 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
   isOpen,
   onClose,
   onRestore,
+  onDeleteVersion,
+  onSelectVersion,
 }) => {
   const [selectedVersion, setSelectedVersion] = useState<PromptVersionSnapshot | null>(null);
 
@@ -53,14 +57,27 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
     [versions]
   );
 
+  const handleSelectVersion = (v: PromptVersionSnapshot) => {
+    setSelectedVersion(v);
+    // Notify parent to hydrate variable values — does NOT create a new version
+    onSelectVersion?.(v);
+  };
+
+  const handleDelete = (e: React.MouseEvent, snapshotId: string) => {
+    e.stopPropagation();
+    if (confirm('Delete this version permanently?')) {
+      onDeleteVersion?.(snapshotId);
+      if (selectedVersion?.id === snapshotId) {
+        setSelectedVersion(null);
+      }
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-background/60 backdrop-blur-sm">
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0" onClick={onClose} />
       <div className="relative w-full max-w-2xl bg-popover border-l border-border shadow-2xl animate-in slide-in-from-right flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
@@ -95,23 +112,33 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                   return (
                     <button
                       key={v.id}
-                      onClick={() => setSelectedVersion(v)}
-                      className={`w-full text-left p-3 rounded-lg transition-all text-sm ${
+                      onClick={() => handleSelectVersion(v)}
+                      className={`w-full text-left p-3 rounded-lg transition-all text-sm group ${
                         isSelected
                           ? 'bg-primary/15 border border-primary/30'
                           : 'hover:bg-muted border border-transparent'
                       }`}
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        <GitCommit size={12} className="text-primary shrink-0" />
-                        <span className="font-bold text-foreground text-xs">
-                          v{v.version}
-                          {isCurrent && (
-                            <span className="ml-1.5 px-1.5 py-0.5 bg-primary/20 text-primary text-[9px] rounded-full font-bold">
-                              CURRENT
-                            </span>
-                          )}
-                        </span>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <GitCommit size={12} className="text-primary shrink-0" />
+                          <span className="font-bold text-foreground text-xs">
+                            {v.versionName || `v${v.version}`}
+                            {isCurrent && (
+                              <span className="ml-1.5 px-1.5 py-0.5 bg-primary/20 text-primary text-[9px] rounded-full font-bold">
+                                LATEST
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        {onDeleteVersion && !isCurrent && (
+                          <button
+                            onClick={(e) => handleDelete(e, v.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 hover:text-destructive rounded transition-all"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                       {v.commitMessage && (
                         <p className="text-[11px] text-muted-foreground line-clamp-2 ml-5 mb-1">
@@ -142,7 +169,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
-                        Version {selectedVersion.version}
+                        {selectedVersion.versionName || `Version ${selectedVersion.version}`}
                         <ChevronRight size={14} className="text-muted-foreground" />
                         <span className="text-muted-foreground font-normal">Current</span>
                       </h3>
@@ -182,6 +209,21 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                       />
                     </CardContent>
                   </Card>
+
+                  {/* Saved Variable Values */}
+                  {selectedVersion.variableValues && Object.keys(selectedVersion.variableValues).length > 0 && (
+                    <Card className="border-border mt-3">
+                      <CardContent className="p-4 space-y-2">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Saved Variable Values</span>
+                        {Object.entries(selectedVersion.variableValues).map(([key, val]) => (
+                          <p key={key} className="text-xs">
+                            <span className="font-mono text-primary/80">{key}:</span>{' '}
+                            <span className="text-foreground">{val || <span className="text-muted-foreground italic">empty</span>}</span>
+                          </p>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Meta changes */}
                   {(selectedVersion.title !== prompt.title ||
