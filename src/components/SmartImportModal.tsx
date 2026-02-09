@@ -49,7 +49,7 @@ function smartParse(raw: string): ParsedPrompt {
     ? lines.slice(bodyStartIndex).join('\n').trim() 
     : lines[0].trim();
 
-  // Detect variables: {{curly}}, [SQUARE], <angle>
+  // Detect variables: {{curly}}, [SQUARE], <angle>, SCREAMING_SNAKE
   const varMatches = new Set<string>();
   const patterns = [
     /\{\{([^}]+)\}\}/g,
@@ -64,7 +64,16 @@ function smartParse(raw: string): ParsedPrompt {
     }
   }
 
-  // Also detect [BRACKET] style from existing detectVariables
+  // Screaming snake case: standalone ALL_CAPS words (4+ chars)
+  const reserved = new Set(['TODO', 'NOTE', 'FIXME', 'HACK', 'IMPORTANT', 'WARNING', 'DEPRECATED']);
+  const screamingMatches = raw.match(/\b([A-Z][A-Z_]{3,})\b/g);
+  if (screamingMatches) {
+    screamingMatches.forEach(m => {
+      if (!reserved.has(m)) varMatches.add(m);
+    });
+  }
+
+  // Also detect from existing detectVariables
   const legacyVars = detectVariables(raw);
   legacyVars.forEach(v => varMatches.add(v));
 

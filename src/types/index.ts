@@ -159,9 +159,27 @@ export const DEFAULT_FOLDERS = [
 // ===============================
 
 export function detectVariables(content: string): string[] {
-  const matches = content.match(/\[([A-Z_]+)\]/g);
-  if (!matches) return [];
-  return [...new Set(matches.map(m => m.slice(1, -1)))];
+  const vars = new Set<string>();
+  const patterns = [
+    /\{\{([^}]+)\}\}/g,
+    /\[([A-Z_][A-Z_0-9]*)\]/g,
+    /<([a-zA-Z_][a-zA-Z_0-9]*)>/g,
+  ];
+  for (const p of patterns) {
+    let m;
+    while ((m = p.exec(content)) !== null) {
+      vars.add(m[1].trim());
+    }
+  }
+  // Screaming snake case: standalone ALL_CAPS words (4+ chars)
+  const screamingMatches = content.match(/\b([A-Z][A-Z_]{3,})\b/g);
+  if (screamingMatches) {
+    const reserved = new Set(['TODO', 'NOTE', 'FIXME', 'HACK', 'IMPORTANT', 'WARNING', 'DEPRECATED']);
+    screamingMatches.forEach(m => {
+      if (!reserved.has(m)) vars.add(m);
+    });
+  }
+  return Array.from(vars);
 }
 
 export function generateId(): string {
