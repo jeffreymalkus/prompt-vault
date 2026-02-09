@@ -20,7 +20,8 @@ export const PromptCard: React.FC<PromptCardProps> = ({
   onCopy, 
   onTogglePin,
   isCopied, 
-  versionCount = 1 
+  versionCount = 1,
+  onClick
 }) => {
   const [expandedContent, setExpandedContent] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -29,10 +30,13 @@ export const PromptCard: React.FC<PromptCardProps> = ({
 
   // Clicking the card opens the prompt
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't trigger if clicking on interactive elements
     const target = e.target as HTMLElement;
     if (target.closest('button')) return;
-    onEdit(prompt);
+    if (onClick) {
+      onClick();
+    } else {
+      onEdit(prompt);
+    }
   };
 
   return (
