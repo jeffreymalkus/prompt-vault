@@ -8,7 +8,11 @@ interface PromptDetailModalProps {
   onClose: () => void;
 }
 
-/** Detects all variable patterns: {{curly}}, [SQUARE], <angle> */
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Detects all variable patterns: {{curly}}, [SQUARE], <angle>, SCREAMING_SNAKE */
 function extractAllVariables(content: string): string[] {
   const vars = new Set<string>();
   const patterns = [
@@ -22,24 +26,75 @@ function extractAllVariables(content: string): string[] {
       vars.add(m[1].trim());
     }
   }
+  // Screaming snake case (4+ chars, all caps)
+  const reserved = new Set(['TODO', 'NOTE', 'FIXME', 'HACK', 'IMPORTANT', 'WARNING', 'DEPRECATED']);
+  const screamingMatches = content.match(/\b([A-Z][A-Z_]{3,})\b/g);
+  if (screamingMatches) {
+    screamingMatches.forEach(m => {
+      if (!reserved.has(m)) vars.add(m);
+    });
+  }
   return Array.from(vars);
 }
 
-/** Replace all variable patterns with their values */
+/** Replace all variable patterns with their values, returning React nodes with highlights */
 function substituteVariables(content: string, values: Record<string, string>): string {
   let result = content;
   for (const [name, value] of Object.entries(values)) {
     if (!value) continue;
-    // Replace {{name}}, [NAME], <name>
     result = result.replace(new RegExp(`\\{\\{${escapeRegex(name)}\\}\\}`, 'g'), value);
     result = result.replace(new RegExp(`\\[${escapeRegex(name)}\\]`, 'g'), value);
     result = result.replace(new RegExp(`<${escapeRegex(name)}>`, 'g'), value);
+    result = result.replace(new RegExp(`\\b${escapeRegex(name)}\\b`, 'g'), value);
   }
   return result;
 }
 
-function escapeRegex(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** Build React nodes with highlighted substitutions */
+function buildHighlightedPreview(
+  content: string,
+  values: Record<string, string>
+): React.ReactNode[] {
+  // Build a combined regex for all filled variables' original patterns
+  const filledEntries = Object.entries(values).filter(([, v]) => v);
+  if (filledEntries.length === 0) return [content];
+
+  const patternParts = filledEntries.map(([name]) => {
+    const e = escapeRegex(name);
+    return `\\{\\{${e}\\}\\}|\\[${e}\\]|<${e}>|\\b${e}\\b`;
+  });
+  const combined = new RegExp(`(${patternParts.join('|')})`, 'g');
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+
+  while ((match = combined.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
+    }
+    // Find which variable this matched
+    const matched = match[0];
+    let replacementValue = matched;
+    for (const [name, value] of filledEntries) {
+      const e = escapeRegex(name);
+      if (new RegExp(`^(?:\\{\\{${e}\\}\\}|\\[${e}\\]|<${e}>|${e})$`).test(matched)) {
+        replacementValue = value;
+        break;
+      }
+    }
+    parts.push(
+      <mark key={key++} className="bg-accent/25 text-accent-foreground rounded px-0.5">
+        {replacementValue}
+      </mark>
+    );
+    lastIndex = combined.lastIndex;
+  }
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+  return parts;
 }
 
 export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
@@ -53,6 +108,11 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
 
   const liveContent = useMemo(
     () => substituteVariables(prompt.content, varValues),
+    [prompt.content, varValues]
+  );
+
+  const highlightedContent = useMemo(
+    () => buildHighlightedPreview(prompt.content, varValues),
     [prompt.content, varValues]
   );
 
@@ -120,7 +180,7 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
             </label>
             <div className="bg-background border border-border rounded-xl p-4 max-h-64 overflow-y-auto custom-scrollbar">
               <pre className="text-sm font-mono text-foreground/85 whitespace-pre-wrap leading-relaxed">
-                {liveContent}
+                {highlightedContent}
               </pre>
             </div>
           </div>
