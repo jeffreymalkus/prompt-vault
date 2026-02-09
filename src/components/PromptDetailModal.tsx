@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { AIPrompt } from '../types';
-import { X, Copy, Check, Variable, Eye } from 'lucide-react';
+import { X, Copy, Check, Variable, Eye, Clock } from 'lucide-react';
 
 interface PromptDetailModalProps {
   prompt: AIPrompt;
   isOpen: boolean;
   onClose: () => void;
+  onOpenHistory?: () => void;
 }
 
 function escapeRegex(s: string) {
@@ -101,6 +102,7 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
   prompt,
   isOpen,
   onClose,
+  onOpenHistory,
 }) => {
   const variables = useMemo(() => extractAllVariables(prompt.content), [prompt.content]);
   const [varValues, setVarValues] = useState<Record<string, string>>({});
@@ -140,9 +142,20 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
             </h2>
             <p className="text-xs text-muted-foreground mt-1">{prompt.description}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full text-muted-foreground transition-colors">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenHistory && (
+              <button
+                onClick={onOpenHistory}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-muted-foreground hover:text-primary hover:bg-muted rounded-lg transition-colors"
+              >
+                <Clock size={14} />
+                HISTORY
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 hover:bg-muted rounded-full text-muted-foreground transition-colors">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-5">

@@ -6,7 +6,7 @@ interface PromptModalProps {
   prompt?: AIPrompt;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (prompt: Partial<AIPrompt>, saveAsNewVersion: boolean) => void;
+  onSave: (prompt: Partial<AIPrompt>, saveAsNewVersion: boolean, commitMessage?: string) => void;
   availableFolders?: string[];
 }
 
@@ -25,6 +25,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   const [folder, setFolder] = useState('General');
   const [type, setType] = useState<PromptType>('user');
   const [tags, setTags] = useState('');
+  const [commitMessage, setCommitMessage] = useState('');
   const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
         setFolder(prompt.folder || 'General');
         setType(prompt.type || 'user');
         setTags(prompt.tags.join(', '));
+        setCommitMessage('');
         setIsCreatingNewFolder(false);
       } else {
         setContent('');
@@ -48,6 +50,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
         setFolder('General');
         setType('user');
         setTags('');
+        setCommitMessage('');
         setIsCreatingNewFolder(false);
       }
     }
@@ -68,7 +71,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       variables,
       parentId: prompt?.parentId || prompt?.id,
       version: saveAsNewVersion ? (prompt?.version || 1) + 1 : (prompt?.version || 1)
-    }, saveAsNewVersion);
+    }, saveAsNewVersion, commitMessage || undefined);
     onClose();
   };
 
@@ -234,6 +237,19 @@ export const PromptModal: React.FC<PromptModalProps> = ({
               onChange={(e) => setTags(e.target.value)}
             />
           </div>
+
+          {/* Commit Message */}
+          {prompt && (
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground/80">Version Note (optional)</label>
+              <input
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/50 outline-none text-sm"
+                placeholder="e.g. Switched tone to professional, Added audience variable..."
+                value={commitMessage}
+                onChange={(e) => setCommitMessage(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="pt-6 border-t border-border flex gap-3">
             <button
