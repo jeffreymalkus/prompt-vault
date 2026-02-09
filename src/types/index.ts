@@ -96,6 +96,24 @@ export interface Agent {
 }
 
 // ===============================
+// PROMPT VERSION HISTORY
+// ===============================
+
+export interface PromptVersionSnapshot {
+  id: string;
+  promptId: string; // parentId or original id
+  content: string;
+  title: string;
+  description: string;
+  tags: string[];
+  category: string;
+  folder: string;
+  commitMessage: string;
+  createdAt: number;
+  version: number;
+}
+
+// ===============================
 // EXECUTION HISTORY
 // ===============================
 

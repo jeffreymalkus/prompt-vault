@@ -4,7 +4,8 @@ import {
   Skill, 
   Workflow, 
   Agent, 
-  ExecutionRun, 
+  ExecutionRun,
+  PromptVersionSnapshot,
   DEFAULT_CATEGORIES, 
   ViewMode, 
   ActiveSection, 
@@ -26,6 +27,7 @@ import { AgentModal } from '../components/AgentModal';
 import { AgentImportModal } from '../components/AgentImportModal';
 import { SmartImportModal } from '../components/SmartImportModal';
 import { PromptDetailModal } from '../components/PromptDetailModal';
+import { VersionHistoryDrawer } from '../components/VersionHistoryDrawer';
 import { NavigationTabs } from '../components/NavigationTabs';
 import { CapabilityView } from '../components/CapabilityView';
 import { ExecutionHistory } from '../components/ExecutionHistory';
@@ -155,6 +157,10 @@ const Index: React.FC = () => {
   // SMART IMPORT & DETAIL
   const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
   const [detailPrompt, setDetailPrompt] = useState<AIPrompt | undefined>(undefined);
+  
+  // VERSION HISTORY
+  const [versionSnapshots, setVersionSnapshots] = useState<PromptVersionSnapshot[]>([]);
+  const [historyPrompt, setHistoryPrompt] = useState<AIPrompt | undefined>(undefined);
 
   // Load and seed prompts
   useEffect(() => {
@@ -164,6 +170,7 @@ const Index: React.FC = () => {
     const savedWorkflows = localStorage.getItem('prompt_vault_workflows');
     const savedAgents = localStorage.getItem('prompt_vault_agents');
     const savedHistory = localStorage.getItem('prompt_vault_execution_history');
+    const savedSnapshots = localStorage.getItem('prompt_vault_version_snapshots');
     
     if (savedPrompts) {
       try {
@@ -258,6 +265,15 @@ const Index: React.FC = () => {
         console.error('Failed to load execution history', e);
       }
     }
+
+    // Load version snapshots
+    if (savedSnapshots) {
+      try {
+        setVersionSnapshots(JSON.parse(savedSnapshots));
+      } catch (e) {
+        console.error('Failed to load version snapshots', e);
+      }
+    }
   }, []);
 
   // Persist data
@@ -284,6 +300,10 @@ const Index: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('prompt_vault_execution_history', JSON.stringify(executionHistory));
   }, [executionHistory]);
+
+  useEffect(() => {
+    localStorage.setItem('prompt_vault_version_snapshots', JSON.stringify(versionSnapshots));
+  }, [versionSnapshots]);
 
   const uniqueFolders = useMemo(() => {
     const fromPrompts = prompts.map(p => p.folder);
@@ -492,10 +512,33 @@ const Index: React.FC = () => {
     });
   };
 
-  const handleSavePrompt = (data: Partial<AIPrompt>, saveAsNewVersion: boolean) => {
+  const createVersionSnapshot = (prompt: AIPrompt, commitMessage: string = '') => {
+    const snapshot: PromptVersionSnapshot = {
+      id: generateId(),
+      promptId: prompt.parentId || prompt.id,
+      content: prompt.content,
+      title: prompt.title,
+      description: prompt.description,
+      tags: [...prompt.tags],
+      category: prompt.category,
+      folder: prompt.folder,
+      commitMessage,
+      createdAt: Date.now(),
+      version: prompt.version,
+    };
+    setVersionSnapshots(prev => [snapshot, ...prev]);
+  };
+
+  const handleSavePrompt = (data: Partial<AIPrompt>, saveAsNewVersion: boolean, commitMessage?: string) => {
     if (editingPrompt && !saveAsNewVersion) {
+      // Snapshot current state before overwriting
+      createVersionSnapshot(editingPrompt, commitMessage || 'Updated prompt');
       setPrompts(prev => prev.map(p => p.id === editingPrompt.id ? { ...p, ...data } as AIPrompt : p));
     } else {
+      if (editingPrompt) {
+        // Snapshot old version before creating new
+        createVersionSnapshot(editingPrompt, commitMessage || `Saved as v${data.version || 1}`);
+      }
       const newPrompt: AIPrompt = {
         id: generateId(),
         title: data.title || 'Untitled',
@@ -522,6 +565,34 @@ const Index: React.FC = () => {
     }
     setIsModalOpen(false);
     setEditingPrompt(undefined);
+  };
+
+  const handleRestoreVersion = (snapshot: PromptVersionSnapshot) => {
+    // Find the current prompt for this snapshot
+    const currentPrompt = prompts.find(p => (p.parentId || p.id) === snapshot.promptId);
+    if (!currentPrompt) return;
+    
+    // Snapshot current state before restoring
+    createVersionSnapshot(currentPrompt, 'Before restore');
+    
+    // Update prompt with restored content
+    setPrompts(prev => prev.map(p => 
+      p.id === currentPrompt.id 
+        ? { ...p, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder, version: p.version + 1 }
+        : p
+    ));
+    
+    // Update detail view if open
+    const updated = { ...currentPrompt, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder, version: currentPrompt.version + 1 };
+    if (detailPrompt?.id === currentPrompt.id) {
+      setDetailPrompt(updated);
+    }
+    setHistoryPrompt(undefined);
+  };
+
+  const getVersionsForPrompt = (prompt: AIPrompt): PromptVersionSnapshot[] => {
+    const key = prompt.parentId || prompt.id;
+    return versionSnapshots.filter(s => s.promptId === key);
   };
 
   const handleCopy = (prompt: AIPrompt) => {
@@ -1462,6 +1533,17 @@ const Index: React.FC = () => {
           isOpen={!!detailPrompt}
           onClose={() => setDetailPrompt(undefined)}
           prompt={detailPrompt}
+          onOpenHistory={() => setHistoryPrompt(detailPrompt)}
+        />
+      )}
+
+      {historyPrompt && (
+        <VersionHistoryDrawer
+          isOpen={!!historyPrompt}
+          prompt={historyPrompt}
+          versions={getVersionsForPrompt(historyPrompt)}
+          onClose={() => setHistoryPrompt(undefined)}
+          onRestore={handleRestoreVersion}
         />
       )}
     </div>
