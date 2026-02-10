@@ -196,7 +196,7 @@ const Index: React.FC = () => {
         console.error('Failed to load folders', e);
       }
     } else {
-      setCustomFolders(['AI Slow Down', 'Core Frameworks', 'Development', 'Professional', 'Marketing', 'Education', 'Creative', 'General']);
+      setCustomFolders(['Core Frameworks', 'Development', 'Professional', 'Marketing', 'Education', 'Creative', 'General']);
     }
 
     // Load skills

@@ -736,23 +736,55 @@ Rules:
  * The 21 canonical seed prompts, fully typed as AIPrompt objects.
  * These are immutable at runtime — user actions cannot modify them.
  */
-export const CANONICAL_SEED_PROMPTS: AIPrompt[] = seeds.map((s, i) => ({
-  id: s.id,
-  title: s.title,
-  content: s.content,
-  description: 'AI Slow Down canonical seed prompt (v1.0)',
-  notes: '',
-  category: 'Analysis',
-  tags: ['ai-slow-down', 'canonical'],
-  folder: 'AI Slow Down',
-  type: 'system' as const,
-  version: 1,
-  lastUsedAt: SEED_TIMESTAMP,
-  createdAt: SEED_TIMESTAMP + i, // stable ordering
-  usageCount: 0,
-  isPinned: false,
-  variables: s.variables,
-}));
+// Exact folder + category mapping per prompt id
+const SEED_PLACEMENT: Record<string, { folder: string; category: string }> = {
+  'asd-seed-01-help-me-decide':                       { folder: 'Core Frameworks', category: 'Planning' },
+  'asd-seed-02-tell-me-what-i-m-missing':              { folder: 'Core Frameworks', category: 'Planning' },
+  'asd-seed-03-pressure-test-this-before-i-act':       { folder: 'Professional',    category: 'Operations' },
+  'asd-seed-04-compare-these-options-clearly':         { folder: 'Core Frameworks', category: 'Planning' },
+  'asd-seed-05-turn-my-messy-thoughts-into-clarity':   { folder: 'Core Frameworks', category: 'Planning' },
+  'asd-seed-06-break-this-into-real-next-steps':       { folder: 'Professional',    category: 'Operations' },
+  'asd-seed-07-rewrite-this-without-changing-the-meaning': { folder: 'Professional', category: 'Writing' },
+  'asd-seed-08-outline-first-then-draft':              { folder: 'Professional',    category: 'Writing' },
+  'asd-seed-09-is-this-idea-any-good-be-brutally-specific': { folder: 'Core Frameworks', category: 'Planning' },
+  'asd-seed-10-extract-facts-only-no-guessing-with-proof': { folder: 'Core Frameworks', category: 'Research' },
+  'asd-seed-11-prompt-failure-analysis-via-external-frames': { folder: 'Core Frameworks', category: 'Analysis' },
+  'asd-seed-12-get-back-on-track':                     { folder: 'Core Frameworks', category: 'Analysis' },
+  'asd-seed-13-save-progress-and-continue':            { folder: 'Core Frameworks', category: 'Analysis' },
+  'asd-seed-14-reduce-to-what-matters-next':           { folder: 'Core Frameworks', category: 'Analysis' },
+  'asd-seed-15-write-a-professional-response-with-stakes': { folder: 'Professional', category: 'Writing' },
+  'asd-seed-16-say-no-without-burning-capital':        { folder: 'Professional',    category: 'Writing' },
+  'asd-seed-17-prepare-me-for-this-meeting':           { folder: 'Professional',    category: 'Business' },
+  'asd-seed-18-turn-these-notes-into-decisions-and-owners': { folder: 'Professional', category: 'Operations' },
+  'asd-seed-19-draft-the-follow-up-after-this-meeting': { folder: 'Professional',   category: 'Operations' },
+  'asd-seed-20-explain-this-to-an-executive':          { folder: 'Professional',    category: 'Business' },
+  'asd-seed-21-translate-this-for-a-non-expert-audience': { folder: 'Professional', category: 'Business' },
+};
+
+/**
+ * The 21 canonical seed prompts, fully typed as AIPrompt objects.
+ * These are immutable at runtime — user actions cannot modify them.
+ */
+export const CANONICAL_SEED_PROMPTS: AIPrompt[] = seeds.map((s, i) => {
+  const placement = SEED_PLACEMENT[s.id] || { folder: 'General', category: 'Analysis' };
+  return {
+    id: s.id,
+    title: s.title,
+    content: s.content,
+    description: 'AI Slow Down canonical seed prompt (v1.0)',
+    notes: '',
+    category: placement.category,
+    tags: ['ai-slow-down', 'canonical'],
+    folder: placement.folder,
+    type: 'system' as const,
+    version: 1,
+    lastUsedAt: SEED_TIMESTAMP,
+    createdAt: SEED_TIMESTAMP + i,
+    usageCount: 0,
+    isPinned: false,
+    variables: s.variables,
+  };
+});
 
 /**
  * Merge canonical seeds with user prompts from localStorage.
