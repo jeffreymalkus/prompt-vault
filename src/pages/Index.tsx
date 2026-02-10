@@ -12,6 +12,7 @@ import {
   NavigationView,
   generateId 
 } from '../types';
+import { CANONICAL_SEED_PROMPTS, mergeWithCanonicalSeeds, isCanonicalSeed } from '../data/canonicalSeedPrompts';
 import { PromptCard } from '../components/PromptCard';
 import { PromptModal } from '../components/PromptModal';
 import { SkillCard } from '../components/SkillCard';
@@ -175,52 +176,17 @@ const Index: React.FC = () => {
     const savedHistory = localStorage.getItem('prompt_vault_execution_history');
     const savedSnapshots = localStorage.getItem('prompt_vault_version_snapshots');
     
-    if (savedPrompts) {
-      try {
-        setPrompts(JSON.parse(savedPrompts));
-      } catch (e) {
-        console.error('Failed to load prompts', e);
-      }
-    } else {
-      const now = Date.now();
-      const initial: AIPrompt[] = [
-        {
-          id: '1',
-          title: 'Expert Persona Framework',
-          content: 'Act as an expert [ROLE] with 20 years of experience in [INDUSTRY]. Your goal is to [GOAL]. Use professional language and provide deep, nuanced insights.',
-          description: 'The standard for high-quality persona generation.',
-          notes: 'Uses persona adoption and industry anchoring to reduce generic responses.',
-          category: 'Analysis',
-          tags: ['persona', 'expert'],
-          folder: 'Core Frameworks',
-          type: 'system',
-          version: 1,
-          createdAt: now - 1000,
-          lastUsedAt: now,
-          usageCount: 15,
-          isPinned: true,
-          variables: ['ROLE', 'INDUSTRY', 'GOAL']
-        },
-        {
-          id: '2',
-          title: 'Step-by-Step Reasoning (CoT)',
-          content: 'Solve the following: [PROBLEM]. Before answering, think through the solution step-by-step. Show your logical work for each transition.',
-          description: 'Uses Chain-of-Thought to increase accuracy.',
-          notes: 'Critical for mathematical or complex logic tasks.',
-          category: 'Analysis',
-          tags: ['logic', 'reasoning'],
-          folder: 'Core Frameworks',
-          type: 'user',
-          version: 1,
-          createdAt: now - 2000,
-          lastUsedAt: now,
-          usageCount: 8,
-          isPinned: false,
-          variables: ['PROBLEM']
+    {
+      let userPrompts: AIPrompt[] = [];
+      if (savedPrompts) {
+        try {
+          userPrompts = JSON.parse(savedPrompts);
+        } catch (e) {
+          console.error('Failed to load prompts', e);
         }
-      ];
-      setPrompts(initial);
-      localStorage.setItem('prompt_vault_data_v2', JSON.stringify(initial));
+      }
+      // Always merge canonical seeds with whatever user prompts exist
+      setPrompts(mergeWithCanonicalSeeds(userPrompts));
     }
 
     if (savedFolders) {
@@ -230,7 +196,7 @@ const Index: React.FC = () => {
         console.error('Failed to load folders', e);
       }
     } else {
-      setCustomFolders(['Core Frameworks', 'Development', 'Professional', 'Marketing', 'Education', 'Creative', 'General']);
+      setCustomFolders(['AI Slow Down', 'Core Frameworks', 'Development', 'Professional', 'Marketing', 'Education', 'Creative', 'General']);
     }
 
     // Load skills
@@ -280,8 +246,10 @@ const Index: React.FC = () => {
   }, []);
 
   // Persist data
+  // Persist only user (non-canonical) prompts to localStorage
   useEffect(() => {
-    localStorage.setItem('prompt_vault_data_v2', JSON.stringify(prompts));
+    const userOnly = prompts.filter(p => !isCanonicalSeed(p.id));
+    localStorage.setItem('prompt_vault_data_v2', JSON.stringify(userOnly));
   }, [prompts]);
 
   useEffect(() => {
@@ -668,13 +636,33 @@ const Index: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
+    if (isCanonicalSeed(id)) {
+      alert('Canonical seed prompts cannot be deleted.');
+      return;
+    }
     if (confirm('Delete this version?')) {
       setPrompts(prev => prev.filter(p => p.id !== id));
     }
   };
 
   const handleEdit = (prompt: AIPrompt) => {
-    setEditingPrompt(prompt);
+    if (isCanonicalSeed(prompt.id)) {
+      // Create a user-owned copy for editing instead of mutating canonical
+      const copy: AIPrompt = {
+        ...prompt,
+        id: generateId(),
+        parentId: prompt.id,
+        description: `Copy of: ${prompt.title}`,
+        version: 1,
+        createdAt: Date.now(),
+        lastUsedAt: Date.now(),
+        usageCount: 0,
+        isPinned: false,
+      };
+      setEditingPrompt(copy);
+    } else {
+      setEditingPrompt(prompt);
+    }
     setIsModalOpen(true);
   };
 
