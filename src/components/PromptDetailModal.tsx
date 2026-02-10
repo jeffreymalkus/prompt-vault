@@ -153,10 +153,6 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
       setVersionError('Version name already exists.');
       return;
     }
-    if (result === 'duplicate-content') {
-      setVersionError('No changes from an existing version.');
-      return;
-    }
     setVersionError('');
     setShowVersionNameInput(false);
     setVersionName('');

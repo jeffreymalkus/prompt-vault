@@ -484,6 +484,29 @@ const Index: React.FC = () => {
     });
   };
 
+  const ensureBaselineSnapshot = (prompt: AIPrompt) => {
+    const key = prompt.parentId || prompt.id;
+    setVersionSnapshots(prev => {
+      const existing = prev.filter(s => s.promptId === key);
+      if (existing.length > 0) return prev;
+      const baseline: PromptVersionSnapshot = {
+        id: generateId(),
+        promptId: key,
+        content: prompt.content,
+        title: prompt.title,
+        description: prompt.description,
+        tags: [...prompt.tags],
+        category: prompt.category,
+        folder: prompt.folder,
+        commitMessage: 'Initial version',
+        createdAt: Date.now() - 1,
+        version: 1,
+        variableValues: {},
+      };
+      return [...prev, baseline];
+    });
+  };
+
   const createVersionSnapshot = (prompt: AIPrompt, commitMessage: string = '') => {
     const snapshot: PromptVersionSnapshot = {
       id: generateId(),
@@ -579,35 +602,35 @@ const Index: React.FC = () => {
   };
 
   const handleUpdateCurrent = (promptObj: AIPrompt, varValues: Record<string, string>) => {
-    // Snapshot current state, then update with current var values saved
-    createVersionSnapshot(promptObj, 'Updated current');
-    // Save variable values into the latest snapshot
-    setVersionSnapshots(prev => {
-      const latest = prev[0];
-      if (latest) {
-        return [{ ...latest, variableValues: varValues }, ...prev.slice(1)];
-      }
-      return prev;
-    });
+    ensureBaselineSnapshot(promptObj);
+    const snapshot: PromptVersionSnapshot = {
+      id: generateId(),
+      promptId: promptObj.parentId || promptObj.id,
+      content: promptObj.content,
+      title: promptObj.title,
+      description: promptObj.description,
+      tags: [...promptObj.tags],
+      category: promptObj.category,
+      folder: promptObj.folder,
+      commitMessage: 'Updated current',
+      createdAt: Date.now(),
+      version: promptObj.version,
+      variableValues: { ...varValues },
+    };
+    setVersionSnapshots(prev => [snapshot, ...prev]);
   };
 
   const handleSaveNewVersion = (promptObj: AIPrompt, varValues: Record<string, string>, versionName: string): string | null => {
+    ensureBaselineSnapshot(promptObj);
     const promptKey = promptObj.parentId || promptObj.id;
-    const existingVersions = versionSnapshots.filter(s => s.promptId === promptKey);
 
     // Check duplicate name (case-insensitive, trimmed)
     const trimmedName = versionName.trim();
-    const nameExists = existingVersions.some(
-      v => (v.versionName || '').trim().toLowerCase() === trimmedName.toLowerCase()
-    );
+    const nameExists = versionSnapshots
+      .filter(s => s.promptId === promptKey)
+      .some(v => (v.versionName || '').trim().toLowerCase() === trimmedName.toLowerCase());
     if (nameExists) {
       return 'duplicate-name';
-    }
-
-    // Check identical content
-    const contentExists = existingVersions.some(v => v.content === promptObj.content);
-    if (contentExists) {
-      return 'duplicate-content';
     }
 
     const snapshot: PromptVersionSnapshot = {
@@ -707,6 +730,7 @@ const Index: React.FC = () => {
   };
 
   const handlePromptDetailClick = (prompt: AIPrompt) => {
+    ensureBaselineSnapshot(prompt);
     setDetailPrompt(prompt);
   };
 

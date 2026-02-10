@@ -131,10 +131,10 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                             )}
                           </span>
                         </div>
-                        {onDeleteVersion && !isCurrent && (
+                        {onDeleteVersion && sortedVersions.length > 1 && (
                           <button
                             onClick={(e) => handleDelete(e, v.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 hover:text-destructive rounded transition-all"
+                            className="p-1 hover:bg-destructive/20 hover:text-destructive text-muted-foreground rounded transition-all"
                           >
                             <Trash2 size={12} />
                           </button>
