@@ -498,7 +498,7 @@ const Index: React.FC = () => {
         tags: [...prompt.tags],
         category: prompt.category,
         folder: prompt.folder,
-        commitMessage: 'Initial version',
+        commitMessage: 'Initial Version',
         createdAt: Date.now() - 1,
         version: 1,
         variableValues: {},
@@ -527,12 +527,12 @@ const Index: React.FC = () => {
   const handleSavePrompt = (data: Partial<AIPrompt>, saveAsNewVersion: boolean, commitMessage?: string) => {
     if (editingPrompt && !saveAsNewVersion) {
       // Snapshot current state before overwriting
-      createVersionSnapshot(editingPrompt, commitMessage || 'Updated prompt');
+    createVersionSnapshot(editingPrompt, commitMessage || 'Updated prompt');
       setPrompts(prev => prev.map(p => p.id === editingPrompt.id ? { ...p, ...data } as AIPrompt : p));
     } else {
       if (editingPrompt) {
         // Snapshot old version before creating new
-        createVersionSnapshot(editingPrompt, commitMessage || `Saved as v${data.version || 1}`);
+        createVersionSnapshot(editingPrompt, commitMessage || 'Previous version');
       }
       const newPrompt: AIPrompt = {
         id: generateId(),
@@ -567,18 +567,15 @@ const Index: React.FC = () => {
     const currentPrompt = prompts.find(p => (p.parentId || p.id) === snapshot.promptId);
     if (!currentPrompt) return;
     
-    // Snapshot current state before restoring
-    createVersionSnapshot(currentPrompt, 'Before restore');
-    
-    // Update prompt with restored content
+    // RESTORE ONLY: update editor state, do NOT create any snapshot
     setPrompts(prev => prev.map(p => 
       p.id === currentPrompt.id 
-        ? { ...p, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder, version: p.version + 1 }
+        ? { ...p, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder }
         : p
     ));
     
     // Update detail view if open
-    const updated = { ...currentPrompt, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder, version: currentPrompt.version + 1 };
+    const updated = { ...currentPrompt, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder };
     if (detailPrompt?.id === currentPrompt.id) {
       setDetailPrompt(updated);
     }
@@ -593,7 +590,12 @@ const Index: React.FC = () => {
   };
 
   const handleDeleteVersion = (snapshotId: string) => {
-    setVersionSnapshots(prev => prev.filter(s => s.id !== snapshotId));
+    setVersionSnapshots(prev => {
+      const target = prev.find(s => s.id === snapshotId);
+      // Never delete v1 (version === 1)
+      if (target && target.version === 1) return prev;
+      return prev.filter(s => s.id !== snapshotId);
+    });
   };
 
   const handleSelectVersion = (snapshot: PromptVersionSnapshot) => {

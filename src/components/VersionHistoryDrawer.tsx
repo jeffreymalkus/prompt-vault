@@ -131,14 +131,20 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                             )}
                           </span>
                         </div>
-                        {onDeleteVersion && sortedVersions.length > 1 && (
-                          <button
-                            onClick={(e) => handleDelete(e, v.id)}
-                            className="p-1 hover:bg-destructive/20 hover:text-destructive text-muted-foreground rounded transition-all"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
+                        {onDeleteVersion && (() => {
+                          const isV1 = v.version === 1;
+                          const canDelete = sortedVersions.length > 1 && !isV1;
+                          return (
+                            <button
+                              onClick={(e) => canDelete && handleDelete(e, v.id)}
+                              disabled={!canDelete}
+                              className="p-1 hover:bg-destructive/20 hover:text-destructive text-muted-foreground rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={!canDelete ? (isV1 ? 'Cannot delete initial version' : 'Must keep at least one version') : 'Delete version'}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          );
+                        })()}
                       </div>
                       {v.commitMessage && (
                         <p className="text-[11px] text-muted-foreground line-clamp-2 ml-5 mb-1">
