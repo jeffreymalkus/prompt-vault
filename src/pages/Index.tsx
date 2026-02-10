@@ -435,6 +435,7 @@ const Index: React.FC = () => {
             category: p.category || 'Creative',
             folder: p.folder || 'General',
             type: p.type || 'user',
+            origin: 'user',
             version: 1,
             tags: p.tags || [],
             createdAt: Date.now() + index,
@@ -519,6 +520,7 @@ const Index: React.FC = () => {
         category: data.category || 'Creative',
         folder: data.folder || 'General',
         type: data.type || 'user',
+        origin: 'user',
         version: data.version || 1,
         tags: data.tags || [],
         createdAt: Date.now(),
@@ -589,18 +591,36 @@ const Index: React.FC = () => {
     });
   };
 
-  const handleSaveNewVersion = (promptObj: AIPrompt, varValues: Record<string, string>, versionName: string) => {
+  const handleSaveNewVersion = (promptObj: AIPrompt, varValues: Record<string, string>, versionName: string): string | null => {
+    const promptKey = promptObj.parentId || promptObj.id;
+    const existingVersions = versionSnapshots.filter(s => s.promptId === promptKey);
+
+    // Check duplicate name (case-insensitive, trimmed)
+    const trimmedName = versionName.trim();
+    const nameExists = existingVersions.some(
+      v => (v.versionName || '').trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (nameExists) {
+      return 'duplicate-name';
+    }
+
+    // Check identical content
+    const contentExists = existingVersions.some(v => v.content === promptObj.content);
+    if (contentExists) {
+      return 'duplicate-content';
+    }
+
     const snapshot: PromptVersionSnapshot = {
       id: generateId(),
-      promptId: promptObj.parentId || promptObj.id,
+      promptId: promptKey,
       content: promptObj.content,
       title: promptObj.title,
       description: promptObj.description,
       tags: [...promptObj.tags],
       category: promptObj.category,
       folder: promptObj.folder,
-      commitMessage: versionName,
-      versionName,
+      commitMessage: trimmedName,
+      versionName: trimmedName,
       createdAt: Date.now(),
       version: promptObj.version + 1,
       variableValues: { ...varValues },
@@ -614,6 +634,7 @@ const Index: React.FC = () => {
     if (detailPrompt?.id === promptObj.id) {
       setDetailPrompt(prev => prev ? { ...prev, version: prev.version + 1 } : prev);
     }
+    return null;
   };
 
   const handleCopy = (prompt: AIPrompt) => {
@@ -652,7 +673,7 @@ const Index: React.FC = () => {
         ...prompt,
         id: generateId(),
         parentId: prompt.id,
-        description: `Copy of: ${prompt.title}`,
+        origin: 'user',
         version: 1,
         createdAt: Date.now(),
         lastUsedAt: Date.now(),

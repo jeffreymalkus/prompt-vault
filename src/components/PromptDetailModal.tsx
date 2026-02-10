@@ -8,7 +8,7 @@ interface PromptDetailModalProps {
   onClose: () => void;
   onOpenHistory?: () => void;
   onUpdateCurrent?: (prompt: AIPrompt, varValues: Record<string, string>) => void;
-  onSaveNewVersion?: (prompt: AIPrompt, varValues: Record<string, string>, versionName: string) => void;
+  onSaveNewVersion?: (prompt: AIPrompt, varValues: Record<string, string>, versionName: string) => string | null;
   initialVarValues?: Record<string, string>;
 }
 
@@ -102,6 +102,7 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [showVersionNameInput, setShowVersionNameInput] = useState(false);
   const [versionName, setVersionName] = useState('');
+  const [versionError, setVersionError] = useState('');
 
   // Re-hydrate when initialVarValues changes (version switch)
   React.useEffect(() => {
@@ -147,7 +148,16 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
 
   const handleSaveNewVersion = useCallback(() => {
     const name = versionName.trim() || `Version ${(prompt.version || 1) + 1} - ${new Date().toLocaleString()}`;
-    onSaveNewVersion?.(prompt, varValues, name);
+    const result = onSaveNewVersion?.(prompt, varValues, name);
+    if (result === 'duplicate-name') {
+      setVersionError('Version name already exists.');
+      return;
+    }
+    if (result === 'duplicate-content') {
+      setVersionError('No changes from an existing version.');
+      return;
+    }
+    setVersionError('');
     setShowVersionNameInput(false);
     setVersionName('');
   }, [prompt, varValues, versionName, onSaveNewVersion]);
@@ -240,9 +250,12 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/40 outline-none"
                 placeholder={`e.g. Expert Marketing Version`}
                 value={versionName}
-                onChange={(e) => setVersionName(e.target.value)}
+                onChange={(e) => { setVersionName(e.target.value); setVersionError(''); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNewVersion(); }}
               />
+              {versionError && (
+                <p className="text-xs text-destructive font-medium">{versionError}</p>
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveNewVersion}
@@ -251,7 +264,7 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
                   SAVE
                 </button>
                 <button
-                  onClick={() => { setShowVersionNameInput(false); setVersionName(''); }}
+                  onClick={() => { setShowVersionNameInput(false); setVersionName(''); setVersionError(''); }}
                   className="px-4 py-2 bg-muted hover:bg-muted/80 text-muted-foreground rounded-lg text-xs font-bold transition-colors"
                 >
                   CANCEL

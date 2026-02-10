@@ -821,6 +821,7 @@ export const CANONICAL_SEED_PROMPTS: AIPrompt[] = seeds.map((s, i) => {
     tags: [],
     folder: placement.folder,
     type: 'user' as const,
+    origin: 'builtin' as const,
     version: 1,
     lastUsedAt: SEED_TIMESTAMP,
     createdAt: SEED_TIMESTAMP + i,
@@ -838,13 +839,19 @@ export const CANONICAL_SEED_PROMPTS: AIPrompt[] = seeds.map((s, i) => {
 export function mergeWithCanonicalSeeds(userPrompts: AIPrompt[]): AIPrompt[] {
   const canonicalIds = new Set(CANONICAL_SEED_PROMPTS.map(p => p.id));
   
+  // Ensure all user prompts have origin field (backward compat)
+  const withOrigin = userPrompts.map(p => ({
+    ...p,
+    origin: p.origin || 'user' as const,
+  }));
+
   // Reassign ids for any user prompts that collide with canonical ids
-  const safeUserPrompts = userPrompts
+  const safeUserPrompts = withOrigin
     .filter(p => !canonicalIds.has(p.id))
     .concat(
-      userPrompts
+      withOrigin
         .filter(p => canonicalIds.has(p.id))
-        .map(p => ({ ...p, id: `user-${p.id}-${Date.now()}` }))
+        .map(p => ({ ...p, id: `user-${p.id}-${Date.now()}`, origin: 'user' as const }))
     );
 
   return [...CANONICAL_SEED_PROMPTS, ...safeUserPrompts];
