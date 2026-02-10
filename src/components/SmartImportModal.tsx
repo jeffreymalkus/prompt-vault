@@ -59,30 +59,7 @@ function smartParse(raw: string): ParsedPrompt {
     ? lines.slice(bodyStartIndex).join('\n').trim() 
     : lines[0].trim();
 
-  const varMatches = new Set<string>();
-  const patterns = [
-    /\{\{([^}]+)\}\}/g,
-    /\[([A-Z_][A-Z_0-9]*)\]/g,
-    /<([a-zA-Z_][a-zA-Z_0-9]*)>/g,
-  ];
-  
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(raw)) !== null) {
-      varMatches.add(match[1].trim());
-    }
-  }
-
-  const reserved = new Set(['TODO', 'NOTE', 'FIXME', 'HACK', 'IMPORTANT', 'WARNING', 'DEPRECATED']);
-  const screamingMatches = raw.match(/\b([A-Z][A-Z_]{3,})\b/g);
-  if (screamingMatches) {
-    screamingMatches.forEach(m => {
-      if (!reserved.has(m)) varMatches.add(m);
-    });
-  }
-
-  const legacyVars = detectVariables(raw);
-  legacyVars.forEach(v => varMatches.add(v));
+  const variables = detectVariables(raw);
 
   const description = body.length > 120 
     ? body.substring(0, 120).replace(/\s+\S*$/, '') + '…' 
@@ -91,7 +68,7 @@ function smartParse(raw: string): ParsedPrompt {
   return {
     title: title.length > 80 ? title.substring(0, 80) : title,
     body,
-    variables: Array.from(varMatches),
+    variables,
     description,
   };
 }
