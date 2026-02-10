@@ -19,6 +19,8 @@ interface SeedDef {
   title: string;
   content: string;
   variables: string[];
+  description: string;
+  notes: string;
 }
 
 const seeds: SeedDef[] = [
@@ -70,6 +72,8 @@ Output format:
 - Concise bullets
 - No background explanation beyond what is needed to decide`,
     variables: ['CONSTRAINTS', 'DECISION', 'FAILURE', 'SUCCESS'],
+    description: 'Structured framework for making clear, defensible decisions by evaluating options, stress-testing outcomes, and identifying concrete next steps.',
+    notes: 'Uses a 5-step progression: Options → Stress Test → Tradeoffs → Recommendation → Action. Forces explicit tradeoff acknowledgment and prevents optimism bias by requiring failure mode analysis for each option.',
   },
   {
     id: 'asd-seed-02-tell-me-what-i-m-missing',
@@ -105,6 +109,8 @@ Output format:
 - Bullet points only
 - No recommendations, fixes, or motivational language`,
     variables: ['CONTEXT', 'PLAN / IDEA / DECISION'],
+    description: 'Identifies hidden assumptions, unknowns, and fragility points in any plan or idea — without judging or redesigning it.',
+    notes: 'Deliberately separates gap-finding from problem-solving. Labels assumptions as EXPLICIT vs IMPLIED and unknowns as UNKNOWABLE when appropriate. The fragility check pinpoints the single highest-risk assumption.',
   },
   {
     id: 'asd-seed-03-pressure-test-this-before-i-act',
@@ -153,6 +159,8 @@ Output format:
 - Bulleted lists
 - No reassurance, encouragement, or generic advice`,
     variables: ['ACTION', 'CONSTRAINTS', 'ONE-WAY CONSEQUENCES', 'PEOPLE / STAKEHOLDERS', 'TIMING'],
+    description: 'Pre-commitment risk review that identifies backfire scenarios, severity, and risk reduction steps before you act.',
+    notes: 'Assumes you will proceed unless a serious risk is found. Distinguishes REVERSIBLE vs ONE-WAY consequences. Ends with a clear go/pause/adjust recommendation rather than open-ended analysis.',
   },
   {
     id: 'asd-seed-04-compare-these-options-clearly',
@@ -208,6 +216,8 @@ Output format:
 - No recommendations unless requested
 - No filler or generic advice`,
     variables: ['CONSTRAINTS', 'GOAL', 'OPTION 1', 'OPTION 2', 'OPTION 3', 'PRIORITIES'],
+    description: 'Side-by-side comparison of multiple options using parallel structure, risk profiles, and differentiators — without choosing for you.',
+    notes: 'Treats all options as proposed by competent professionals to prevent bias. Uses parallel structure for easy scanning. Separates synthesis from decision-making unless explicitly asked to recommend.',
   },
   {
     id: 'asd-seed-05-turn-my-messy-thoughts-into-clarity',
@@ -253,6 +263,8 @@ Output format:
 - Bullet points only
 - No advice, solutions, or motivational language`,
     variables: ['PASTE NOTES / THOUGHTS'],
+    description: 'Converts raw, unstructured notes or thoughts into organized themes, priorities, and a clean summary — without adding interpretation.',
+    notes: 'Strictly organizational — no new ideas, opinions, or recommendations are added. Labels ambiguous items as UNCLEAR. Priority is inferred only from emphasis, repetition, or stated urgency in the original text.',
   },
   {
     id: 'asd-seed-06-break-this-into-real-next-steps',
@@ -307,6 +319,8 @@ Output format:
 - No motivational language
 - No long-term strategy discussion`,
     variables: ['CONSTRAINTS', 'GOAL', 'ROLE', 'TIMING'],
+    description: 'Breaks any goal into a realistic sequence of small, doable steps with dependency tracking and stall-point identification.',
+    notes: 'Prioritizes smallest meaningful actions over comprehensive plans. Labels blocked steps explicitly. Includes a reality check that identifies the most likely stall point and a friction-reduction step.',
   },
   {
     id: 'asd-seed-07-rewrite-this-without-changing-the-meaning',
@@ -356,6 +370,8 @@ Output:
 3) Fidelity check notes
 No commentary beyond this.`,
     variables: ['AUDIENCE', 'CONSTRAINTS', 'NEUTRAL / PROFESSIONAL / FIRM / WARM', 'PURPOSE', 'TEXT'],
+    description: 'Precision editing that improves clarity and structure while locking in the original meaning, intent, and commitments.',
+    notes: 'Uses a "meaning lock" step before rewriting to prevent drift. Includes a risk scan for accidental changes to commitments or tone. The fidelity check at the end flags any remaining ambiguity.',
   },
   {
     id: 'asd-seed-08-outline-first-then-draft',
@@ -400,6 +416,8 @@ Output:
 3) Draft limitations
 No commentary beyond this.`,
     variables: ['AUDIENCE', 'CONSTRAINTS', 'LENGTH or DEPTH', 'PURPOSE', 'TASK'],
+    description: 'Two-phase drafting: creates a structural outline first, then writes a rough draft that follows it — designed for iteration, not perfection.',
+    notes: 'Separates structure from prose to reduce blank-page paralysis. Labels optional sections and missing inputs explicitly. Ends with known weaknesses to guide revision.',
   },
   {
     id: 'asd-seed-09-is-this-idea-any-good-be-brutally-specific',
@@ -431,6 +449,8 @@ Self‑check:
 Rate this critique 1–100 for specificity, severity, and usefulness.
 If any score is below 90, rewrite the critique.`,
     variables: ['CONSTRAINTS', 'IDEA', 'SUCCESS', 'TARGET'],
+    description: 'Brutally honest idea evaluation that identifies dealbreakers, critical assumptions, and the single weakest point — with a concrete fix and validation test.',
+    notes: 'Includes a self-check mechanism where the AI rates its own critique for specificity and rewrites if the score is below 90. The 6-month failure postmortem forces forward-looking risk identification.',
   },
   {
     id: 'asd-seed-10-extract-facts-only-no-guessing-with-proof',
@@ -457,6 +477,8 @@ Verification step:
 Review each claim one final time.
 If you cannot point to a direct quote, remove the claim.`,
     variables: ['SPECIFIC_DATA_TO_EXTRACT', 'UPLOADED_DOCUMENT_OR_TEXT'],
+    description: 'Extracts only explicitly stated facts from a document, with direct quotes as proof and clear labeling of unverified or missing information.',
+    notes: 'Every claim requires a supporting direct quote and location reference. Uses a three-tier status system: FOUND / UNVERIFIED / NOT FOUND. Includes a final verification pass that removes any unsupported claims.',
   },
   {
     id: 'asd-seed-11-prompt-failure-analysis-via-external-frames',
@@ -472,6 +494,8 @@ Then choose the most likely one and rewrite my original prompt to correct for it
 
 Keep the rewritten prompt short, explicit, and reusable.`,
     variables: [],
+    description: 'Diagnoses why a previous prompt produced poor results by analyzing it against common failure patterns, then rewrites it to fix the most likely issue.',
+    notes: 'Meta-level prompt — operates on the prompt itself rather than the task. Identifies failure modes like unclear objectives, missing constraints, wrong abstraction level, or task overloading. Preserves original intent while fixing structural issues.',
   },
   {
     id: 'asd-seed-12-get-back-on-track',
@@ -484,6 +508,8 @@ Keep the rewritten prompt short, explicit, and reusable.`,
 
 Once aligned, continue the task using only confirmed information.`,
     variables: [],
+    description: 'Realignment prompt that forces the AI to restate its understanding of the task and strip out unconfirmed assumptions before continuing.',
+    notes: 'Session-control prompt designed for mid-conversation correction. Prevents context drift by requiring explicit confirmation of goals, constraints, and audience before proceeding.',
   },
   {
     id: 'asd-seed-13-save-progress-and-continue',
@@ -508,6 +534,8 @@ After the summary, ask whether to:
 - continue in this thread, or
 - switch to a fresh chat using the handoff context.`,
     variables: [],
+    description: 'Creates a portable state summary of the current task so work can continue seamlessly in a fresh conversation without losing progress.',
+    notes: 'Generates a structured handoff block covering objective, confirmed constraints, completed work, open questions, and key context. Designed for long-running tasks that may span multiple sessions.',
   },
   {
     id: 'asd-seed-14-reduce-to-what-matters-next',
@@ -522,6 +550,8 @@ If there are alternatives, present no more than three, with one-line guidance on
 
 Optimize for speed, clarity, and usability.`,
     variables: [],
+    description: 'Strips a verbose response down to decision-level output: the single most likely next action plus up to three alternatives.',
+    notes: 'Compression prompt — removes background explanation and secondary detail. Optimizes for speed, clarity, and immediate usability. Useful after receiving long AI responses that bury the actionable conclusion.',
   },
   {
     id: 'asd-seed-15-write-a-professional-response-with-stakes',
@@ -560,6 +590,8 @@ Output:
 1) Final sendable draft
 2) 3-bullet explanation of why this works`,
     variables: ['AVOID', 'CONSTRAINTS', 'NEUTRAL / WARM / FIRM / DIPLOMATIC / URGENT-CALM', 'OUTCOME', 'PASTE MESSAGE', 'WHO IS THIS PERSON TO ME'],
+    description: 'Drafts a professional email response for high-stakes situations, with risk scanning for accidental admissions, overpromises, and misinterpretations.',
+    notes: 'Includes a silent risk scan that checks for overpromising, scope creep, ambiguous timelines, and emotional language before drafting. The confidence check lists potential misinterpretations and provides a revised version to prevent the most likely one.',
   },
   {
     id: 'asd-seed-16-say-no-without-burning-capital',
@@ -594,6 +626,8 @@ For each option include:
 - Boundary sentence
 - Alternative or next step`,
     variables: ['ALTERNATIVE', 'ASK', 'BOUNDARY', 'CALM / FIRM / FRIENDLY / EXECUTIVE-BRIEF', 'EMAIL / SLACK / TALKING POINTS', 'PASTE REQUEST OR DESCRIBE', 'REASON'],
+    description: 'Helps decline requests while preserving relationships — provides three response options: direct, warm, and conditional yes.',
+    notes: 'Negotiation-aware approach that avoids unnecessary apologies, blame, and over-explanation. Each option includes a clear boundary sentence, an alternative or next step, and adapts to the specified medium (email, Slack, or talking points).',
   },
   {
     id: 'asd-seed-17-prepare-me-for-this-meeting',
@@ -625,6 +659,8 @@ List 3 failure modes and one prevention move for each.
 
 Output sections clearly and concisely.`,
     variables: ['MINUTES', 'NAMES/ROLES', 'PASTE CONTEXT', 'PURPOSE', 'ROLE', 'TITLE'],
+    description: 'Full meeting preparation: objective, timeboxed agenda, stakeholder analysis, pre-wire questions, proposed decisions, and risk prevention.',
+    notes: 'Chief-of-staff approach that focuses on driving outcomes rather than just attending. Includes stakeholder motivation mapping, facts to have ready (marked UNKNOWN if missing), and specific failure mode prevention for each agenda item.',
   },
   {
     id: 'asd-seed-18-turn-these-notes-into-decisions-and-owners',
@@ -646,6 +682,8 @@ Deliver:
 4) Explicit risks mentioned
 5) Proposed next-meeting agenda based only on unresolved items`,
     variables: ['PASTE NOTES'],
+    description: 'Converts raw meeting notes into an execution-ready record with decisions, action items, open questions, and risks.',
+    notes: 'Operations-focused: produces a structured action items table (Action | Owner | Due | Dependencies | Status). Labels missing information explicitly as UNCLEAR, OWNER NOT ASSIGNED, or DATE NOT STATED rather than inventing details.',
   },
   {
     id: 'asd-seed-19-draft-the-follow-up-after-this-meeting',
@@ -672,6 +710,8 @@ Deliver:
 
 Then provide a second version 30% shorter.`,
     variables: ['EMAIL / SLACK', 'NEUTRAL / WARM / FIRM', 'PASTE', 'TITLE'],
+    description: 'Drafts a post-meeting follow-up message that creates accountability with explicit action items, decisions, and next checkpoints.',
+    notes: 'Produces two versions: a full follow-up and a 30% shorter version. Focuses on accountability by making action items explicit with Owner — Action — Due format. Never invents owners or dates.',
   },
   {
     id: 'asd-seed-20-explain-this-to-an-executive',
@@ -702,6 +742,8 @@ Deliver:
 
 End with the exact decision or next step required.`,
     variables: ['30s / 2m / 5m', 'DECISION/ASK', 'PASTE', 'PRIORITIES', 'ROLE'],
+    description: 'Converts any content into an executive-ready brief at three time scales (30s, 2min, 5min) with clear asks and risk surfacing.',
+    notes: 'Leads with the point, uses plain language, and quantifies impact (or marks UNKNOWN). Includes an appendix of 5 likely executive questions with sharp answers. Ends with the exact decision or next step required.',
   },
   {
     id: 'asd-seed-21-translate-this-for-a-non-expert-audience',
@@ -729,6 +771,8 @@ Rules:
 - Label uncertainty explicitly
 - No filler`,
     variables: ['ACTION', 'BASELINE', 'FRIENDLY / NEUTRAL / PROFESSIONAL', 'PASTE', 'ROLE'],
+    description: 'Translates complex or technical content into clear, accurate language that a non-expert audience can understand and act on.',
+    notes: 'Five-layer delivery: one-sentence definition, five-bullet explanation with examples, "what this means for you" section, common misunderstandings to prevent, and a suggested next step. Explicitly avoids oversimplifying into inaccuracy.',
   },
 ];
 
@@ -771,12 +815,12 @@ export const CANONICAL_SEED_PROMPTS: AIPrompt[] = seeds.map((s, i) => {
     id: s.id,
     title: s.title,
     content: s.content,
-    description: 'AI Slow Down canonical seed prompt (v1.0)',
-    notes: '',
+    description: s.description,
+    notes: s.notes,
     category: placement.category,
-    tags: ['ai-slow-down', 'canonical'],
+    tags: [],
     folder: placement.folder,
-    type: 'system' as const,
+    type: 'user' as const,
     version: 1,
     lastUsedAt: SEED_TIMESTAMP,
     createdAt: SEED_TIMESTAMP + i,

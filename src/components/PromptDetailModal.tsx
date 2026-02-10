@@ -163,7 +163,6 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
               <Eye size={18} className="text-primary" />
               {prompt.title}
-              <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full font-bold">v{prompt.version}</span>
             </h2>
             <p className="text-xs text-muted-foreground mt-1">{prompt.description}</p>
           </div>

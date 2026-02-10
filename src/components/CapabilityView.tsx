@@ -105,11 +105,6 @@ export const CapabilityView: React.FC<CapabilityViewProps> = ({
                   className="text-left p-4 bg-card border border-border rounded-xl hover:border-primary/50 transition-all group"
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded ${
-                      prompt.type === 'system' ? 'bg-primary/20 text-primary' : 'bg-accent/20 text-accent'
-                    }`}>
-                      {prompt.type}
-                    </span>
                     <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
                       {prompt.title}
                     </span>

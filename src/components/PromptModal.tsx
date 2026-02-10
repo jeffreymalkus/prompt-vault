@@ -121,25 +121,6 @@ export const PromptModal: React.FC<PromptModalProps> = ({
         <form className="p-6 space-y-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 space-y-2">
-              <label className="text-sm font-semibold text-foreground/80">Prompt Type</label>
-              <div className="flex gap-2 p-1 bg-background border border-border rounded-xl">
-                <button 
-                  type="button"
-                  onClick={() => setType('user')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${type === 'user' ? 'bg-type-user text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  <User size={14} /> USER
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setType('system')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${type === 'system' ? 'bg-type-system text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  <Cpu size={14} /> SYSTEM
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 space-y-2">
               <label className="text-sm font-semibold text-foreground/80">Folder / Client</label>
               <div className="space-y-2">
                 <div className="relative">

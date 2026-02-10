@@ -1312,7 +1312,6 @@ const Index: React.FC = () => {
                             <table className="w-full text-left border-collapse">
                               <thead>
                                 <tr className="bg-muted/50 border-b border-border">
-                                  <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Type</th>
                                   <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Name</th>
                                   <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-center">Pin</th>
                                   <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-right">Actions</th>
@@ -1326,16 +1325,9 @@ const Index: React.FC = () => {
                                     onClick={() => handlePromptDetailClick(prompt)}
                                   >
                                     <td className="p-5">
-                                      <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${
-                                        prompt.type === 'system' ? 'bg-primary text-primary-foreground' : 'bg-accent text-accent-foreground'
-                                      }`}>
-                                        {prompt.type}
-                                      </span>
-                                    </td>
-                                    <td className="p-5">
                                       <div className="flex flex-col gap-1">
                                         <span className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">{prompt.title}</span>
-                                        <span className="text-sm text-foreground/60">v{prompt.version} • {prompt.description}</span>
+                                        <span className="text-sm text-foreground/60">{prompt.description}</span>
                                       </div>
                                     </td>
                                     <td className="p-5 text-center">

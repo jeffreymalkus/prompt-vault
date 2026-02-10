@@ -26,7 +26,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({
   const [expandedContent, setExpandedContent] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
-  const isSystem = prompt.type === 'system';
+  // Internal flag preserved but not rendered
 
   // Clicking the card opens the prompt
   const handleCardClick = (e: React.MouseEvent) => {
@@ -47,13 +47,6 @@ export const PromptCard: React.FC<PromptCardProps> = ({
       <div className="p-6 flex-1">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${
-              isSystem 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-accent text-accent-foreground'
-            }`}>
-              {prompt.type}
-            </span>
             <span className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-muted text-foreground/80 rounded-md overflow-hidden">
               <FolderIcon size={11} className="shrink-0 opacity-70" />
               <span className="truncate max-w-[80px]">{prompt.folder}</span>
@@ -119,7 +112,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({
           <div className="relative">
             <div className={`text-xs font-mono p-4 bg-background/80 rounded-lg text-foreground/80 leading-relaxed overflow-hidden ${expandedContent ? '' : 'max-h-28'}`}>
               <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-foreground/60 uppercase tracking-wide border-b border-border/30 pb-2">
-                <span>{prompt.type === 'system' ? 'System Instruction' : 'User Input'}</span>
+                <span>Prompt Content</span>
               </div>
               {prompt.content}
             </div>
