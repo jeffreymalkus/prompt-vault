@@ -112,10 +112,12 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                   const isV1 = v.version === 1;
                   const canDelete = sortedVersions.length > 1 && !isV1;
                   return (
-                    <button
+                    <div
                       key={v.id}
                       onClick={() => handleSelectVersion(v)}
-                      className={`w-full text-left p-3 rounded-lg transition-all text-sm ${
+                      role="button"
+                      tabIndex={0}
+                      className={`w-full text-left p-3 rounded-lg transition-all text-sm cursor-pointer ${
                         isSelected
                           ? 'bg-primary/15 border border-primary/30'
                           : 'hover:bg-muted border border-transparent'
@@ -155,7 +157,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                       <p className="text-[10px] text-muted-foreground/50 ml-5 mt-1">
                         {new Date(v.createdAt).toLocaleDateString()} {new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
-                    </button>
+                    </div>
                   );
                 })}
                 {sortedVersions.length === 0 && (
