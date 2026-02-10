@@ -1,92 +1,100 @@
 
 
-# Fix Color Palette to Match Reference Design
+# Rebuild Version History: Create Automatic v1 Baseline
 
-## Problem Identified
+## Root Cause
 
-The current design has readability issues because:
-1. The background is sage green - but the reference shows a warm cream/gray background
-2. Some buttons use hardcoded `text-muted-foreground` classes that override CSS variables
-3. The secondary button color blends with the background
+No initial "v1" snapshot is created when a prompt is first interacted with. Version history starts empty, so there is nothing to diff against, nothing to restore, and all subsequent version operations are built on a missing foundation.
 
-## Colors from Your Reference Image
+## Plan
 
-| Element | Color | HSL |
-|---------|-------|-----|
-| Main Background | Warm cream-gray #EDE8E0 | 40 25% 90% |
-| Sidebar/Cards | Warm cream #F6F1E8 | 40 33% 94% |
-| Primary Button (New Prompt) | Dark teal #4A7C72 | 165 25% 39% |
-| CTA Button (Add Your First) | Dark slate #2F3A3E | 195 15% 21% |
-| Text | Dark charcoal #1F2A24 | 150 16% 14% |
-| Accent (Active nav) | Terracotta #B96A4A | 18 45% 51% |
+### 1. Auto-create v1 baseline snapshot (Index.tsx)
 
----
+Add an `ensureBaselineSnapshot` function that checks if any snapshots exist for a prompt. If none exist, it creates a v1 baseline from the prompt's current state.
 
-## Changes Required
+Call this function:
+- When a prompt is opened in the detail modal (`handlePromptDetailClick`)
+- At the start of `handleSaveNewVersion` (safety net)
+- At the start of `handleUpdateCurrent` (safety net)
 
-### 1. src/index.css - Update Color Variables
+This ensures every prompt always has at least one snapshot before any versioning operation runs.
 
-Update both `:root` and `.dark` sections:
+### 2. Fix `handleUpdateCurrent` race condition (Index.tsx)
 
-```css
-/* Background: Warm cream-gray (not green) */
---background: 40 25% 90%;
+Currently it calls `createVersionSnapshot` and then separately mutates `prev[0]` to attach variable values. This is a race with React state batching.
 
-/* Primary: Dark teal for main buttons - WHITE text */
---primary: 165 25% 39%;
---primary-foreground: 0 0% 100%;
+Rewrite to build the complete snapshot (including `variableValues`) in a single `setVersionSnapshots` call. No separate mutation step.
 
-/* Secondary: Dark slate/charcoal - WHITE text */
---secondary: 195 15% 25%;
---secondary-foreground: 0 0% 100%;
+### 3. Remove `contentExists` blocking check (Index.tsx)
 
-/* Muted: Light warm tones, readable dark text */
---muted: 40 15% 85%;
---muted-foreground: 150 12% 30%;
+The identical-content check on line 608-611 blocks valid saves where the user wants to save a named version with specific variable values but hasn't changed the prompt body. Remove it entirely -- duplicate name prevention is sufficient.
 
-/* Border: Subtle warm gray */
---border: 40 10% 75%;
---input: 40 10% 75%;
+### 4. Make delete button always visible (VersionHistoryDrawer.tsx)
+
+Remove `opacity-0 group-hover:opacity-100` so the trash icon is always visible. Allow deleting any version as long as at least one other version remains (protect against completely empty history).
+
+### 5. Remove `duplicate-content` error case (PromptDetailModal.tsx)
+
+Remove the UI handling for `duplicate-content` errors since that check is being removed from the backend logic.
+
+## Technical Details
+
+### `ensureBaselineSnapshot` function (new, in Index.tsx)
+
+```text
+function ensureBaselineSnapshot(prompt):
+  key = prompt.parentId || prompt.id
+  existing = versionSnapshots.filter(s => s.promptId === key)
+  if existing.length === 0:
+    create snapshot with:
+      promptId: key
+      content: prompt.content
+      title: prompt.title
+      version: 1
+      commitMessage: "Initial version"
+      variableValues: {}
+    prepend to versionSnapshots
 ```
 
-### 2. src/pages/Index.tsx - Fix Button Text Colors
+### Fixed `handleUpdateCurrent`
 
-Some buttons explicitly use `text-muted-foreground` which makes button text unreadable. These need to change to `text-secondary-foreground`:
-
-**Line 554** - Import button:
-```tsx
-// Before
-className="... text-muted-foreground ..."
-// After  
-className="... text-secondary-foreground ..."
+```text
+function handleUpdateCurrent(promptObj, varValues):
+  ensureBaselineSnapshot(promptObj)
+  create snapshot with:
+    all prompt fields
+    variableValues: varValues (included directly)
+    commitMessage: "Updated current"
+  prepend to versionSnapshots in single setState call
 ```
 
-**Line 563** - Export button:
-```tsx
-// Before
-className="... text-muted-foreground ..."
-// After
-className="... text-secondary-foreground ..."
+### Fixed `handleSaveNewVersion`
+
+```text
+function handleSaveNewVersion(promptObj, varValues, versionName):
+  ensureBaselineSnapshot(promptObj)
+  check duplicate name (keep this)
+  // no content check
+  create snapshot with versionName and varValues
+  increment prompt version
+  return null (success)
 ```
 
----
+## Files Changed
 
-## Visual Result
+| File | Change |
+|------|--------|
+| `src/pages/Index.tsx` | Add `ensureBaselineSnapshot`; rewrite `handleUpdateCurrent` and `handleSaveNewVersion`; remove content-duplicate check; call baseline on detail open |
+| `src/components/VersionHistoryDrawer.tsx` | Make delete button always visible; allow delete on any version when 2+ exist |
+| `src/components/PromptDetailModal.tsx` | Remove `duplicate-content` error handling |
 
-| Element | Before | After |
-|---------|--------|-------|
-| Background | Sage green (hard to read) | Warm cream-gray (easy on eyes) |
-| Primary buttons | Terracotta | Dark teal with white text |
-| Secondary buttons | Sage (fades into bg) | Dark slate with white text |
-| Button text | Sometimes dark on dark | Always white on dark buttons |
-| Cards | Cream (good) | Cream (unchanged) |
+## Acceptance Tests
 
----
-
-## Why This Works
-
-1. **Warm neutral background** - Cream-gray is easier to read than green
-2. **High contrast buttons** - Dark buttons (25% lightness) with white text (100%)
-3. **Consistent text colors** - All buttons get white text via CSS variables
-4. **No hardcoded overrides** - Button text uses `secondary-foreground` which maps to white
+- Opening any prompt's version history shows at least a v1 baseline
+- "Save New Version" works on first attempt (no empty history)
+- "Update Current" properly saves variable values in one atomic operation
+- Saving a version with same content but different name succeeds
+- Duplicate version names are still blocked
+- Delete button is visible on all versions; can delete any version when 2+ exist
+- No USER/SYSTEM badges reintroduced
 
