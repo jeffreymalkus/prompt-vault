@@ -1323,7 +1323,7 @@ const Index: React.FC = () => {
                                   <tr 
                                     key={prompt.id} 
                                     className="hover:bg-muted/30 transition-colors group cursor-pointer"
-                                    onClick={() => handleEdit(prompt)}
+                                    onClick={() => handlePromptDetailClick(prompt)}
                                   >
                                     <td className="p-5">
                                       <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${
