@@ -16,39 +16,29 @@ function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Detects all variable patterns: {{curly}}, [SQUARE], <angle>, SCREAMING_SNAKE */
+/** Detects variables from bracketed tokens only: [VAR_NAME] */
 function extractAllVariables(content: string): string[] {
-  const vars = new Set<string>();
-  const patterns = [
-    /\{\{([^}]+)\}\}/g,
-    /\[([A-Z_][A-Z_0-9]*)\]/g,
-    /<([a-zA-Z_][a-zA-Z_0-9]*)>/g,
-  ];
-  for (const p of patterns) {
-    let m;
-    while ((m = p.exec(content)) !== null) {
-      vars.add(m[1].trim());
-    }
+  const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
+  const regex = /\[(.*?)\]/g;
+  const seen = new Set<string>();
+  const result: string[] = [];
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    const normalized = match[1].trim().toUpperCase().replace(/\s+/g, '_');
+    if (!normalized || stoplist.has(normalized) || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(normalized);
   }
-  const reserved = new Set(['TODO', 'NOTE', 'FIXME', 'HACK', 'IMPORTANT', 'WARNING', 'DEPRECATED']);
-  const screamingMatches = content.match(/\b([A-Z][A-Z_]{3,})\b/g);
-  if (screamingMatches) {
-    screamingMatches.forEach(m => {
-      if (!reserved.has(m)) vars.add(m);
-    });
-  }
-  return Array.from(vars);
+  return result;
 }
 
-/** Replace all variable patterns with their values */
+/** Replace bracketed variable patterns with their values */
 function substituteVariables(content: string, values: Record<string, string>): string {
   let result = content;
   for (const [name, value] of Object.entries(values)) {
     if (!value) continue;
-    result = result.replace(new RegExp(`\\{\\{${escapeRegex(name)}\\}\\}`, 'g'), value);
-    result = result.replace(new RegExp(`\\[${escapeRegex(name)}\\]`, 'g'), value);
-    result = result.replace(new RegExp(`<${escapeRegex(name)}>`, 'g'), value);
-    result = result.replace(new RegExp(`\\b${escapeRegex(name)}\\b`, 'g'), value);
+    // Match [VAR_NAME] with flexible spacing/casing inside brackets
+    result = result.replace(new RegExp(`\\[${escapeRegex(name)}\\]`, 'gi'), value);
   }
   return result;
 }
@@ -63,7 +53,7 @@ function buildHighlightedPreview(
 
   const patternParts = filledEntries.map(([name]) => {
     const e = escapeRegex(name);
-    return `\\{\\{${e}\\}\\}|\\[${e}\\]|<${e}>|\\b${e}\\b`;
+    return `\\[${e}\\]`;
   });
   const combined = new RegExp(`(${patternParts.join('|')})`, 'g');
 
@@ -80,7 +70,7 @@ function buildHighlightedPreview(
     let replacementValue = matched;
     for (const [name, value] of filledEntries) {
       const e = escapeRegex(name);
-      if (new RegExp(`^(?:\\{\\{${e}\\}\\}|\\[${e}\\]|<${e}>|${e})$`).test(matched)) {
+      if (new RegExp(`^\\[${e}\\]$`, 'i').test(matched)) {
         replacementValue = value;
         break;
       }

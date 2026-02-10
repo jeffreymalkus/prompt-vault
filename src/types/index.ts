@@ -277,27 +277,18 @@ export const DEFAULT_FOLDERS = [
 // ===============================
 
 export function detectVariables(content: string): string[] {
-  const vars = new Set<string>();
-  const patterns = [
-    /\{\{([^}]+)\}\}/g,
-    /\[([A-Z_][A-Z_0-9]*)\]/g,
-    /<([a-zA-Z_][a-zA-Z_0-9]*)>/g,
-  ];
-  for (const p of patterns) {
-    let m;
-    while ((m = p.exec(content)) !== null) {
-      vars.add(m[1].trim());
-    }
+  const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
+  const regex = /\[(.*?)\]/g;
+  const seen = new Set<string>();
+  const result: string[] = [];
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    const normalized = match[1].trim().toUpperCase().replace(/\s+/g, '_');
+    if (!normalized || stoplist.has(normalized) || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(normalized);
   }
-  // Screaming snake case: standalone ALL_CAPS words (4+ chars)
-  const screamingMatches = content.match(/\b([A-Z][A-Z_]{3,})\b/g);
-  if (screamingMatches) {
-    const reserved = new Set(['TODO', 'NOTE', 'FIXME', 'HACK', 'IMPORTANT', 'WARNING', 'DEPRECATED']);
-    screamingMatches.forEach(m => {
-      if (!reserved.has(m)) vars.add(m);
-    });
-  }
-  return Array.from(vars);
+  return result;
 }
 
 export function generateId(): string {
