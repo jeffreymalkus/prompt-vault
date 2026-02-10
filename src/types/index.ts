@@ -47,10 +47,108 @@ export interface Skill {
   toolsUsed: string[];
   exampleRun?: string;
   executionNotes?: string;
+  expertPersona?: string;
+  rulesGuardrails?: string;
+  procedure?: string; // Free-text procedure / embedded prompts text
+  status?: 'draft' | 'active';
+  lastExportedText?: string; // Persisted Copy for LLM output
   createdAt: number;
   updatedAt: number;
   usageCount: number;
   isPinned?: boolean;
+}
+
+// Scan skill procedure text for [VARIABLE] patterns
+export function scanSkillInputs(text: string): string[] {
+  const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
+  const regex = /\[([A-Z][A-Z0-9_ ]{1,50})\]/g;
+  const seen = new Set<string>();
+  const result: string[] = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const normalized = match[1].trim().toUpperCase().replace(/\s+/g, '_');
+    if (!stoplist.has(normalized) && !seen.has(normalized)) {
+      seen.add(normalized);
+      result.push(`[${normalized}]`);
+    }
+  }
+  return result;
+}
+
+// Assemble a skill into a portable Markdown block for LLM use
+export function assembleSkillForLLM(skill: Skill): string {
+  const sections: string[] = [];
+  sections.push(`# Skill: ${skill.name}`);
+  
+  if (skill.expertPersona) {
+    sections.push(`\n## Context & Persona\n\n${skill.expertPersona}`);
+  }
+  if (skill.rulesGuardrails) {
+    sections.push(`\n## Rules & Guardrails\n\n${skill.rulesGuardrails}`);
+  }
+  if (skill.inputsRequired.length > 0) {
+    sections.push(`\n## Inputs\n`);
+    skill.inputsRequired.forEach(v => {
+      const label = v.replace(/^\[|\]$/g, '');
+      sections.push(`[${label}]: ____________________`);
+    });
+  }
+  if (skill.procedure) {
+    sections.push(`\n## Procedure\n\n${skill.procedure}`);
+  }
+  if (skill.outputFormat) {
+    sections.push(`\n## Output Format\n\n${skill.outputFormat}`);
+  }
+  return sections.join('\n');
+}
+
+// Parse raw text into skill fields using heading-based heuristics
+export function parseTextToSkillFields(text: string): {
+  expertPersona: string;
+  rulesGuardrails: string;
+  outputFormat: string;
+  procedure: string;
+} {
+  const lines = text.split(/\r?\n/);
+  
+  type Block = { type: 'persona' | 'rules' | 'output' | 'other'; lines: string[] };
+  const blocks: Block[] = [];
+  let currentBlock: Block = { type: 'other', lines: [] };
+
+  const personaRe = /^(?:#{1,3}\s*)?(?:role|persona|act as|context|expert)/i;
+  const rulesRe = /^(?:#{1,3}\s*)?(?:rules|do not|constraints|guardrails|guidelines)/i;
+  const outputRe = /^(?:#{1,3}\s*)?(?:output|format|return|response format|deliverable)/i;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (personaRe.test(trimmed)) {
+      if (currentBlock.lines.length > 0) blocks.push(currentBlock);
+      currentBlock = { type: 'persona', lines: [] };
+      // If the heading line has content after the keyword, keep it
+      const afterColon = trimmed.replace(/^(?:#{1,3}\s*)?(?:role|persona|act as|context|expert)\s*[:：]?\s*/i, '');
+      if (afterColon && afterColon !== trimmed) currentBlock.lines.push(afterColon);
+    } else if (rulesRe.test(trimmed)) {
+      if (currentBlock.lines.length > 0) blocks.push(currentBlock);
+      currentBlock = { type: 'rules', lines: [] };
+      const afterColon = trimmed.replace(/^(?:#{1,3}\s*)?(?:rules|do not|constraints|guardrails|guidelines)\s*[:：]?\s*/i, '');
+      if (afterColon && afterColon !== trimmed) currentBlock.lines.push(afterColon);
+    } else if (outputRe.test(trimmed)) {
+      if (currentBlock.lines.length > 0) blocks.push(currentBlock);
+      currentBlock = { type: 'output', lines: [] };
+      const afterColon = trimmed.replace(/^(?:#{1,3}\s*)?(?:output|format|return|response format|deliverable)\s*[:：]?\s*/i, '');
+      if (afterColon && afterColon !== trimmed) currentBlock.lines.push(afterColon);
+    } else {
+      currentBlock.lines.push(line);
+    }
+  }
+  if (currentBlock.lines.length > 0) blocks.push(currentBlock);
+
+  const persona = blocks.filter(b => b.type === 'persona').map(b => b.lines.join('\n').trim()).join('\n\n');
+  const rules = blocks.filter(b => b.type === 'rules').map(b => b.lines.join('\n').trim()).join('\n\n');
+  const output = blocks.filter(b => b.type === 'output').map(b => b.lines.join('\n').trim()).join('\n\n');
+  const procedure = blocks.filter(b => b.type === 'other').map(b => b.lines.join('\n').trim()).filter(Boolean).join('\n\n');
+
+  return { expertPersona: persona, rulesGuardrails: rules, outputFormat: output, procedure };
 }
 
 // WORKFLOW - Ordered sequence of skills

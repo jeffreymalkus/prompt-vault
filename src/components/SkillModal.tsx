@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Skill, AIPrompt, DEFAULT_CATEGORIES, generateId } from '../types/index';
-import { X, Zap, Plus, ChevronDown, Trash2, GripVertical, Search } from 'lucide-react';
+import { Skill, AIPrompt, DEFAULT_CATEGORIES, generateId, scanSkillInputs } from '../types/index';
+import { X, Zap, Plus, ChevronDown, Trash2, GripVertical, Search, RefreshCw, Copy, Check } from 'lucide-react';
+import { assembleSkillForLLM } from '../types/index';
 
 interface SkillModalProps {
   skill?: Skill;
@@ -9,6 +10,7 @@ interface SkillModalProps {
   onSave: (skill: Skill) => void;
   availableFolders: string[];
   availablePrompts: AIPrompt[];
+  prefill?: Partial<Skill>;
 }
 
 export const SkillModal: React.FC<SkillModalProps> = ({
@@ -17,7 +19,8 @@ export const SkillModal: React.FC<SkillModalProps> = ({
   onClose,
   onSave,
   availableFolders,
-  availablePrompts
+  availablePrompts,
+  prefill
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -25,14 +28,19 @@ export const SkillModal: React.FC<SkillModalProps> = ({
   const [folder, setFolder] = useState('General');
   const [tags, setTags] = useState('');
   const [inputsRequired, setInputsRequired] = useState('');
+  const [inputsManuallyEdited, setInputsManuallyEdited] = useState(false);
   const [outputFormat, setOutputFormat] = useState('');
   const [embeddedPromptIds, setEmbeddedPromptIds] = useState<string[]>([]);
   const [toolsUsed, setToolsUsed] = useState('');
   const [exampleRun, setExampleRun] = useState('');
   const [executionNotes, setExecutionNotes] = useState('');
+  const [expertPersona, setExpertPersona] = useState('');
+  const [rulesGuardrails, setRulesGuardrails] = useState('');
+  const [procedure, setProcedure] = useState('');
   const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
   const [promptSearchQuery, setPromptSearchQuery] = useState('');
   const [showPromptSelector, setShowPromptSelector] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -43,16 +51,36 @@ export const SkillModal: React.FC<SkillModalProps> = ({
         setFolder(skill.folder);
         setTags(skill.tags.join(', '));
         setInputsRequired(skill.inputsRequired.join(', '));
+        setInputsManuallyEdited(true);
         setOutputFormat(skill.outputFormat);
         setEmbeddedPromptIds(skill.embeddedPromptIds);
         setToolsUsed(skill.toolsUsed.join(', '));
         setExampleRun(skill.exampleRun || '');
         setExecutionNotes(skill.executionNotes || '');
+        setExpertPersona(skill.expertPersona || '');
+        setRulesGuardrails(skill.rulesGuardrails || '');
+        setProcedure(skill.procedure || '');
+      } else if (prefill) {
+        setName(prefill.name || '');
+        setDescription(prefill.description || '');
+        setCategory(prefill.category || 'Creative');
+        setFolder(prefill.folder || 'General');
+        setTags(prefill.tags?.join(', ') || '');
+        setInputsRequired(prefill.inputsRequired?.join(', ') || '');
+        setInputsManuallyEdited(false);
+        setOutputFormat(prefill.outputFormat || '');
+        setEmbeddedPromptIds(prefill.embeddedPromptIds || []);
+        setToolsUsed(prefill.toolsUsed?.join(', ') || '');
+        setExampleRun(prefill.exampleRun || '');
+        setExecutionNotes(prefill.executionNotes || '');
+        setExpertPersona(prefill.expertPersona || '');
+        setRulesGuardrails(prefill.rulesGuardrails || '');
+        setProcedure(prefill.procedure || '');
       } else {
         resetForm();
       }
     }
-  }, [skill, isOpen]);
+  }, [skill, isOpen, prefill]);
 
   const resetForm = () => {
     setName('');
@@ -61,19 +89,84 @@ export const SkillModal: React.FC<SkillModalProps> = ({
     setFolder('General');
     setTags('');
     setInputsRequired('');
+    setInputsManuallyEdited(false);
     setOutputFormat('');
     setEmbeddedPromptIds([]);
     setToolsUsed('');
     setExampleRun('');
     setExecutionNotes('');
+    setExpertPersona('');
+    setRulesGuardrails('');
+    setProcedure('');
     setIsCreatingNewFolder(false);
     setPromptSearchQuery('');
     setShowPromptSelector(false);
   };
 
+  const handleRescanInputs = () => {
+    const scanned = scanSkillInputs(procedure);
+    setInputsRequired(scanned.join(', '));
+    setInputsManuallyEdited(true);
+  };
+
+  const handleProcedureChange = (text: string) => {
+    setProcedure(text);
+    // Auto-populate only if user hasn't manually edited
+    if (!inputsManuallyEdited && text.trim()) {
+      const scanned = scanSkillInputs(text);
+      if (scanned.length > 0) {
+        setInputsRequired(scanned.join(', '));
+      }
+    }
+  };
+
+  const handleCopyForLLM = () => {
+    const tempSkill: Skill = {
+      id: skill?.id || '',
+      name: name || 'Untitled Skill',
+      description,
+      category,
+      folder,
+      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+      inputsRequired: inputsRequired.split(',').map(t => t.trim()).filter(Boolean),
+      outputFormat,
+      embeddedPromptIds,
+      toolsUsed: toolsUsed.split(',').map(t => t.trim()).filter(Boolean),
+      expertPersona,
+      rulesGuardrails,
+      procedure,
+      createdAt: skill?.createdAt || Date.now(),
+      updatedAt: Date.now(),
+      usageCount: skill?.usageCount || 0,
+    };
+    const text = assembleSkillForLLM(tempSkill);
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const now = Date.now();
+    const exportText = assembleSkillForLLM({
+      id: skill?.id || generateId(),
+      name: name || 'Untitled Skill',
+      description,
+      category,
+      folder,
+      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+      inputsRequired: inputsRequired.split(',').map(t => t.trim()).filter(Boolean),
+      outputFormat,
+      embeddedPromptIds,
+      toolsUsed: toolsUsed.split(',').map(t => t.trim()).filter(Boolean),
+      expertPersona,
+      rulesGuardrails,
+      procedure,
+      createdAt: skill?.createdAt || now,
+      updatedAt: now,
+      usageCount: skill?.usageCount || 0,
+    });
+
     const savedSkill: Skill = {
       id: skill?.id || generateId(),
       name: name || 'Untitled Skill',
@@ -87,6 +180,11 @@ export const SkillModal: React.FC<SkillModalProps> = ({
       toolsUsed: toolsUsed.split(',').map(t => t.trim()).filter(Boolean),
       exampleRun: exampleRun || undefined,
       executionNotes: executionNotes || undefined,
+      expertPersona: expertPersona || undefined,
+      rulesGuardrails: rulesGuardrails || undefined,
+      procedure: procedure || undefined,
+      status: skill?.status || 'draft',
+      lastExportedText: exportText,
       createdAt: skill?.createdAt || now,
       updatedAt: now,
       usageCount: skill?.usageCount || 0,
@@ -149,9 +247,23 @@ export const SkillModal: React.FC<SkillModalProps> = ({
             </h2>
             <p className="text-xs text-muted-foreground">Bundle prompts into a reusable AI capability.</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full text-muted-foreground transition-colors">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyForLLM}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${
+                copied
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-accent/15 text-accent hover:bg-accent/25'
+              }`}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? 'COPIED!' : 'COPY FOR LLM'}
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-muted rounded-full text-muted-foreground transition-colors">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -234,10 +346,43 @@ export const SkillModal: React.FC<SkillModalProps> = ({
             />
           </div>
 
-          {/* Embedded Prompts */}
+          {/* Expert Persona */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground/80">Expert Persona</label>
+            <textarea
+              className="w-full h-20 bg-background border border-border rounded-xl p-4 text-foreground focus:ring-2 focus:ring-primary/50 outline-none resize-none text-sm"
+              placeholder="Act as an expert [ROLE] with deep experience in..."
+              value={expertPersona}
+              onChange={(e) => setExpertPersona(e.target.value)}
+            />
+          </div>
+
+          {/* Rules / Guardrails */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground/80">Rules / Guardrails</label>
+            <textarea
+              className="w-full h-20 bg-background border border-border rounded-xl p-4 text-foreground focus:ring-2 focus:ring-primary/50 outline-none resize-none text-sm"
+              placeholder="Do not generate... Always ensure... Constraints..."
+              value={rulesGuardrails}
+              onChange={(e) => setRulesGuardrails(e.target.value)}
+            />
+          </div>
+
+          {/* Procedure (main prompt text) */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground/80">Procedure (Embedded Prompts Text)</label>
+            <textarea
+              className="w-full h-32 bg-background border border-border rounded-xl p-4 text-foreground focus:ring-2 focus:ring-primary/50 outline-none resize-none text-sm font-mono"
+              placeholder="Write your step-by-step procedure here. Use [VARIABLE_NAME] for inputs..."
+              value={procedure}
+              onChange={(e) => handleProcedureChange(e.target.value)}
+            />
+          </div>
+
+          {/* Embedded Prompts (relational) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-foreground/80">Embedded Prompts</label>
+              <label className="text-sm font-semibold text-foreground/80">Linked Prompts</label>
               <button
                 type="button"
                 onClick={() => setShowPromptSelector(!showPromptSelector)}
@@ -297,29 +442,9 @@ export const SkillModal: React.FC<SkillModalProps> = ({
                       <span className="text-sm font-medium text-foreground">{prompt.title}</span>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => movePrompt(index, 'up')}
-                        disabled={index === 0}
-                        className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => movePrompt(index, 'down')}
-                        disabled={index === selectedPrompts.length - 1}
-                        className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                      >
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removePrompt(prompt.id)}
-                        className="p-1 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <button type="button" onClick={() => movePrompt(index, 'up')} disabled={index === 0} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30">↑</button>
+                      <button type="button" onClick={() => movePrompt(index, 'down')} disabled={index === selectedPrompts.length - 1} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30">↓</button>
+                      <button type="button" onClick={() => removePrompt(prompt.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
@@ -327,30 +452,40 @@ export const SkillModal: React.FC<SkillModalProps> = ({
             )}
 
             {selectedPrompts.length === 0 && !showPromptSelector && (
-              <p className="text-sm text-muted-foreground italic">No prompts added yet. Click "Add Prompt" to link prompts to this skill.</p>
+              <p className="text-sm text-muted-foreground italic">No prompts linked yet. Click "Add Prompt" to link prompts to this skill.</p>
             )}
           </div>
 
-          {/* Inputs & Output */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+          {/* Inputs Required with Rescan */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
               <label className="text-sm font-semibold text-foreground/80">Inputs Required (comma separated)</label>
-              <input
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/50 outline-none text-sm"
-                placeholder="topic, audience, tone"
-                value={inputsRequired}
-                onChange={(e) => setInputsRequired(e.target.value)}
-              />
+              <button
+                type="button"
+                onClick={handleRescanInputs}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors"
+                title="Re-scan procedure text for [VARIABLE] patterns"
+              >
+                <RefreshCw size={12} /> Rescan Inputs
+              </button>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground/80">Output Format</label>
-              <input
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/50 outline-none text-sm"
-                placeholder="Markdown document, JSON, etc."
-                value={outputFormat}
-                onChange={(e) => setOutputFormat(e.target.value)}
-              />
-            </div>
+            <input
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/50 outline-none text-sm"
+              placeholder="[TOPIC], [AUDIENCE], [TONE]"
+              value={inputsRequired}
+              onChange={(e) => { setInputsRequired(e.target.value); setInputsManuallyEdited(true); }}
+            />
+          </div>
+
+          {/* Output Format */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground/80">Output Format</label>
+            <input
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/50 outline-none text-sm"
+              placeholder="Markdown document, JSON, etc."
+              value={outputFormat}
+              onChange={(e) => setOutputFormat(e.target.value)}
+            />
           </div>
 
           {/* Tags & Tools */}

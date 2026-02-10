@@ -156,7 +156,9 @@ const Index: React.FC = () => {
   
   // SMART IMPORT & DETAIL
   const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
+  const [smartImportDefaultMode, setSmartImportDefaultMode] = useState<'prompt' | 'skill'>('prompt');
   const [detailPrompt, setDetailPrompt] = useState<AIPrompt | undefined>(undefined);
+  const [skillPrefill, setSkillPrefill] = useState<Partial<Skill> | undefined>(undefined);
   
   // VERSION HISTORY
   const [versionSnapshots, setVersionSnapshots] = useState<PromptVersionSnapshot[]>([]);
@@ -688,6 +690,13 @@ const Index: React.FC = () => {
     }
   };
 
+  const handleSmartImportSkill = (prefill: Partial<Skill>) => {
+    setSkillPrefill(prefill);
+    setIsSmartImportOpen(false);
+    setEditingSkill(undefined);
+    setIsSkillModalOpen(true);
+  };
+
   const handlePromptDetailClick = (prompt: AIPrompt) => {
     setDetailPrompt(prompt);
   };
@@ -937,6 +946,7 @@ const Index: React.FC = () => {
 
   const openNewSkill = () => {
     setEditingSkill(undefined);
+    setSkillPrefill(undefined);
     setIsSkillModalOpen(true);
   };
 
@@ -1145,68 +1155,77 @@ const Index: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {activeSection === 'prompts' && (
+            {(activeSection === 'prompts' || activeSection === 'skills') && (
               <>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileImport} 
-                  accept=".json,.csv" 
-                  className="hidden" 
-                />
+                {activeSection === 'prompts' && (
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileImport} 
+                    accept=".json,.csv" 
+                    className="hidden" 
+                  />
+                )}
                 <button 
-                  onClick={() => setIsSmartImportOpen(true)}
+                  onClick={() => { 
+                    setSmartImportDefaultMode(activeSection === 'skills' ? 'skill' : 'prompt');
+                    setIsSmartImportOpen(true); 
+                  }}
                   className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent/90 rounded-lg text-sm font-bold text-accent-foreground transition-all"
                 >
                   <Wand2 size={16} />
                   MAGIC IMPORT
                 </button>
-                <button 
-                  onClick={handleImportClick}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
-                >
-                  <Upload size={16} />
-                  IMPORT
-                </button>
-
-                <div className="relative">
+                {activeSection === 'prompts' && (
                   <button 
-                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    onClick={handleImportClick}
                     className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
                   >
-                    <Download size={16} />
-                    EXPORT
+                    <Upload size={16} />
+                    IMPORT
                   </button>
-                  {showExportMenu && (
-                    <div className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl shadow-card-hover z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                      <button 
-                        onClick={handleExportJSON}
-                        className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors border-b border-border"
-                      >
-                        <FileJson size={16} className="text-primary" />
-                        Export as JSON
-                      </button>
-                      <button 
-                        onClick={handleExportCSV}
-                        className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors"
-                      >
-                        <FileSpreadsheet size={16} className="text-accent" />
-                        Export as CSV
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
+                )}
 
-            {activeSection === 'skills' && (
-              <button 
-                onClick={() => setIsSkillImportModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
-              >
-                <Upload size={16} />
-                IMPORT
-              </button>
+                {activeSection === 'prompts' && (
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowExportMenu(!showExportMenu)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
+                    >
+                      <Download size={16} />
+                      EXPORT
+                    </button>
+                    {showExportMenu && (
+                      <div className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl shadow-card-hover z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                        <button 
+                          onClick={handleExportJSON}
+                          className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors border-b border-border"
+                        >
+                          <FileJson size={16} className="text-primary" />
+                          Export as JSON
+                        </button>
+                        <button 
+                          onClick={handleExportCSV}
+                          className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+                        >
+                          <FileSpreadsheet size={16} className="text-accent" />
+                          Export as CSV
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeSection === 'skills' && (
+                  <button 
+                    onClick={() => setIsSkillImportModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
+                  >
+                    <Upload size={16} />
+                    JSON IMPORT
+                  </button>
+                )}
+              </>
             )}
 
             {activeSection === 'workflows' && (
@@ -1506,11 +1525,12 @@ const Index: React.FC = () => {
 
       <SkillModal
         isOpen={isSkillModalOpen}
-        onClose={() => { setIsSkillModalOpen(false); setEditingSkill(undefined); }}
+        onClose={() => { setIsSkillModalOpen(false); setEditingSkill(undefined); setSkillPrefill(undefined); }}
         onSave={handleSaveSkill}
         skill={editingSkill}
         availableFolders={customFolders}
         availablePrompts={latestPrompts}
+        prefill={skillPrefill}
       />
 
       {runningSkill && (
@@ -1577,7 +1597,9 @@ const Index: React.FC = () => {
         isOpen={isSmartImportOpen}
         onClose={() => setIsSmartImportOpen(false)}
         onImport={handleSmartImport}
+        onImportSkill={handleSmartImportSkill}
         availableFolders={customFolders}
+        defaultMode={smartImportDefaultMode}
       />
 
       {detailPrompt && (
