@@ -117,12 +117,22 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                       onClick={() => handleSelectVersion(v)}
                       role="button"
                       tabIndex={0}
-                      className={`w-full text-left p-3 rounded-lg transition-all text-sm cursor-pointer ${
+                      className={`relative w-full text-left p-3 rounded-lg transition-all text-sm cursor-pointer ${
                         isSelected
                           ? 'bg-primary/15 border border-primary/30'
                           : 'hover:bg-muted border border-transparent'
                       }`}
                     >
+                      {onDeleteVersion && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); if (canDelete) handleDelete(e, v.id); }}
+                          disabled={!canDelete}
+                          className="absolute top-2 right-2 shrink-0 p-1 hover:bg-destructive/20 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                          title={!canDelete ? (isV1 ? 'Cannot delete initial version' : 'Must keep at least one version') : 'Delete version'}
+                        >
+                          <Trash2 size={14} className="text-red-500" />
+                        </button>
+                      )}
                       <div className="flex items-center gap-2 mb-1">
                           <GitCommit size={12} className="text-primary shrink-0" />
                           <span className="font-bold text-foreground text-xs truncate">
@@ -142,21 +152,9 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                       <p className="text-[10px] text-muted-foreground/60 ml-5 truncate">
                         {v.content.slice(0, 50)}…
                       </p>
-                      <div className="flex items-center justify-between ml-5 mt-1">
-                        <span className="text-[10px] text-muted-foreground/50">
-                          {new Date(v.createdAt).toLocaleDateString()} {new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {onDeleteVersion && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); if (canDelete) handleDelete(e, v.id); }}
-                            disabled={!canDelete}
-                            className="shrink-0 p-1 hover:bg-destructive/20 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                            title={!canDelete ? (isV1 ? 'Cannot delete initial version' : 'Must keep at least one version') : 'Delete version'}
-                          >
-                            <Trash2 size={14} className="text-red-500" />
-                          </button>
-                        )}
-                      </div>
+                      <span className="text-[10px] text-muted-foreground/50 ml-5 mt-1 block">
+                        {new Date(v.createdAt).toLocaleDateString()} {new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
                   );
                 })}
