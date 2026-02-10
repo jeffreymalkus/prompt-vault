@@ -123,8 +123,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                           : 'hover:bg-muted border border-transparent'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
                           <GitCommit size={12} className="text-primary shrink-0" />
                           <span className="font-bold text-foreground text-xs truncate">
                             {v.versionName || `v${v.version}`}
@@ -134,7 +133,19 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                               </span>
                             )}
                           </span>
-                        </div>
+                      </div>
+                      {v.commitMessage && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 ml-5 mb-1">
+                          {v.commitMessage}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground/60 ml-5 truncate">
+                        {v.content.slice(0, 50)}…
+                      </p>
+                      <div className="flex items-center justify-between ml-5 mt-1">
+                        <span className="text-[10px] text-muted-foreground/50">
+                          {new Date(v.createdAt).toLocaleDateString()} {new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                         {onDeleteVersion && (
                           <button
                             onClick={(e) => { e.stopPropagation(); if (canDelete) handleDelete(e, v.id); }}
@@ -146,17 +157,6 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                           </button>
                         )}
                       </div>
-                      {v.commitMessage && (
-                        <p className="text-[11px] text-muted-foreground line-clamp-2 ml-5 mb-1">
-                          {v.commitMessage}
-                        </p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground/60 ml-5 truncate">
-                        {v.content.slice(0, 50)}…
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/50 ml-5 mt-1">
-                        {new Date(v.createdAt).toLocaleDateString()} {new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
                     </div>
                   );
                 })}
