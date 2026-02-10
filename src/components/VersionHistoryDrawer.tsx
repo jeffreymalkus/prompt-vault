@@ -109,20 +109,22 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                 {sortedVersions.map((v, idx) => {
                   const isSelected = selectedVersion?.id === v.id;
                   const isCurrent = idx === 0;
+                  const isV1 = v.version === 1;
+                  const canDelete = sortedVersions.length > 1 && !isV1;
                   return (
                     <button
                       key={v.id}
                       onClick={() => handleSelectVersion(v)}
-                      className={`w-full text-left p-3 rounded-lg transition-all text-sm group ${
+                      className={`w-full text-left p-3 rounded-lg transition-all text-sm ${
                         isSelected
                           ? 'bg-primary/15 border border-primary/30'
                           : 'hover:bg-muted border border-transparent'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <GitCommit size={12} className="text-primary shrink-0" />
-                          <span className="font-bold text-foreground text-xs">
+                          <span className="font-bold text-foreground text-xs truncate">
                             {v.versionName || `v${v.version}`}
                             {isCurrent && (
                               <span className="ml-1.5 px-1.5 py-0.5 bg-primary/20 text-primary text-[9px] rounded-full font-bold">
@@ -131,20 +133,16 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                             )}
                           </span>
                         </div>
-                        {onDeleteVersion && (() => {
-                          const isV1 = v.version === 1;
-                          const canDelete = sortedVersions.length > 1 && !isV1;
-                          return (
-                            <button
-                              onClick={(e) => canDelete && handleDelete(e, v.id)}
-                              disabled={!canDelete}
-                              className="p-1 hover:bg-destructive/20 hover:text-destructive text-muted-foreground rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                              title={!canDelete ? (isV1 ? 'Cannot delete initial version' : 'Must keep at least one version') : 'Delete version'}
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          );
-                        })()}
+                        {onDeleteVersion && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (canDelete) handleDelete(e, v.id); }}
+                            disabled={!canDelete}
+                            className="shrink-0 p-1 hover:bg-destructive/20 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={!canDelete ? (isV1 ? 'Cannot delete initial version' : 'Must keep at least one version') : 'Delete version'}
+                          >
+                            <Trash2 size={14} className="text-red-500" />
+                          </button>
+                        )}
                       </div>
                       {v.commitMessage && (
                         <p className="text-[11px] text-muted-foreground line-clamp-2 ml-5 mb-1">
