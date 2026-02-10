@@ -181,6 +181,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
       category,
       folder,
       type: 'user',
+      origin: 'user',
       version: 1,
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
       createdAt: Date.now(),

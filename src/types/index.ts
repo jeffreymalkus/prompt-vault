@@ -4,6 +4,8 @@
 
 export type PromptType = 'system' | 'user';
 
+export type PromptOrigin = 'builtin' | 'user';
+
 export interface AIPrompt {
   id: string;
   title: string;
@@ -14,6 +16,7 @@ export interface AIPrompt {
   tags: string[];
   folder: string;
   type: PromptType;
+  origin: PromptOrigin;
   version: number;
   lastUsedAt: number;
   createdAt: number;

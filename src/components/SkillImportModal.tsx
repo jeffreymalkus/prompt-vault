@@ -163,6 +163,7 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
           category: parsedTemplate.category || 'Creative',
           folder: parsedTemplate.folder || 'General',
           type: embeddedPrompt.type || 'user',
+          origin: 'user',
           tags: embeddedPrompt.tags || [],
           version: 1,
           createdAt: now + index,
