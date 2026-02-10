@@ -434,11 +434,6 @@ export const SkillModal: React.FC<SkillModalProps> = ({
                   <div key={prompt.id} className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg group">
                     <GripVertical size={14} className="text-muted-foreground cursor-grab" />
                     <div className="flex-1 min-w-0">
-                      <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded mr-2 ${
-                        prompt.type === 'system' ? 'bg-primary/20 text-primary' : 'bg-accent/20 text-accent'
-                      }`}>
-                        {prompt.type}
-                      </span>
                       <span className="text-sm font-medium text-foreground">{prompt.title}</span>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
