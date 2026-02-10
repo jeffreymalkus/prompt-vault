@@ -365,6 +365,10 @@ const Index: React.FC = () => {
   }, [agents, searchQuery, activeCategory, activeFolder]);
 
   // PROMPT HANDLERS
+  const handleUpdatePrompt = (updatedPrompt: AIPrompt) => {
+    setPrompts(prev => prev.map(p => p.id === updatedPrompt.id ? updatedPrompt : p));
+  };
+
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(prompts, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -590,12 +594,7 @@ const Index: React.FC = () => {
   };
 
   const handleDeleteVersion = (snapshotId: string) => {
-    setVersionSnapshots(prev => {
-      const target = prev.find(s => s.id === snapshotId);
-      // Never delete v1 (version === 1)
-      if (target && target.version === 1) return prev;
-      return prev.filter(s => s.id !== snapshotId);
-    });
+    setVersionSnapshots(prev => prev.filter(s => s.id !== snapshotId));
   };
 
   const handleSelectVersion = (snapshot: PromptVersionSnapshot) => {
@@ -1400,13 +1399,14 @@ const Index: React.FC = () => {
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {filteredPrompts.map(prompt => (
-                              <PromptCard 
-                                key={prompt.id} 
-                                prompt={prompt} 
-                                onEdit={handleEdit} 
+                              <PromptCard
+                                key={prompt.id}
+                                prompt={prompt}
+                                onEdit={handleEdit}
                                 onDelete={handleDelete}
                                 onCopy={() => handleCopy(prompt)}
                                 onTogglePin={() => togglePin(prompt.id)}
+                                onUpdatePrompt={handleUpdatePrompt}
                                 isCopied={lastCopiedId === prompt.id}
                                 versionCount={groupedPrompts.get(prompt.parentId || prompt.id)?.length}
                                 onClick={() => handlePromptDetailClick(prompt)}

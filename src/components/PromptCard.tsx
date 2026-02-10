@@ -8,18 +8,20 @@ interface PromptCardProps {
   onDelete: (id: string) => void;
   onCopy: () => void;
   onTogglePin: () => void;
+  onUpdatePrompt?: (updatedPrompt: AIPrompt) => void;
   isCopied: boolean;
   versionCount?: number;
   onClick?: () => void;
 }
 
-export const PromptCard: React.FC<PromptCardProps> = ({ 
-  prompt, 
-  onEdit, 
-  onDelete, 
-  onCopy, 
+export const PromptCard: React.FC<PromptCardProps> = ({
+  prompt,
+  onEdit,
+  onDelete,
+  onCopy,
   onTogglePin,
-  isCopied, 
+  onUpdatePrompt,
+  isCopied,
   versionCount = 1,
   onClick
 }) => {
@@ -110,20 +112,19 @@ export const PromptCard: React.FC<PromptCardProps> = ({
 
         <div className="space-y-4">
           <div className="relative">
-            <div className={`text-xs font-mono p-4 bg-background/80 rounded-lg text-foreground/80 leading-relaxed overflow-hidden ${expandedContent ? '' : 'max-h-28'}`}>
-              <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-foreground/60 uppercase tracking-wide border-b border-border/30 pb-2">
-                <span>Prompt Content</span>
-              </div>
-              {prompt.content}
+            <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-foreground/60 uppercase tracking-wide border-b border-border/30 pb-2">
+              <span>Prompt Content</span>
             </div>
-            {prompt.content.length > 120 && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); setExpandedContent(!expandedContent); }}
-                className="mt-2 text-xs text-primary hover:text-primary/80 font-semibold"
-              >
-                {expandedContent ? '▲ Show Less' : '▼ Show More'}
-              </button>
-            )}
+            <textarea
+              value={prompt.content}
+              onChange={(e) => {
+                e.stopPropagation();
+                onUpdatePrompt?.({ ...prompt, content: e.target.value });
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full min-h-[300px] bg-background/80 rounded-lg text-foreground/80 text-xs font-mono p-4 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/30 border border-border/30"
+              readOnly={!onUpdatePrompt}
+            />
           </div>
 
           {prompt.notes && (

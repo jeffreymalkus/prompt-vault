@@ -109,8 +109,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                 {sortedVersions.map((v, idx) => {
                   const isSelected = selectedVersion?.id === v.id;
                   const isCurrent = idx === 0;
-                  const isV1 = v.version === 1;
-                  const canDelete = sortedVersions.length > 1 && !isV1;
+                  const canDelete = true;
                   return (
                     <div
                       key={v.id}
@@ -128,7 +127,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                           onClick={(e) => { e.stopPropagation(); if (canDelete) handleDelete(e, v.id); }}
                           disabled={!canDelete}
                           className="absolute top-2 right-2 shrink-0 p-1 hover:bg-destructive/20 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={!canDelete ? (isV1 ? 'Cannot delete initial version' : 'Must keep at least one version') : 'Delete version'}
+                          title="Delete version"
                         >
                           <Trash2 size={14} className="text-red-500" />
                         </button>
