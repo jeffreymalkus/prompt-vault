@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AIPrompt } from '../types';
-import { Copy, Edit3, Trash2, Clock, Check, Folder as FolderIcon, BookOpen, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import { Copy, Edit3, Trash2, Clock, Check, Folder as FolderIcon, BookOpen, ChevronDown, ChevronUp, Star, Layers } from 'lucide-react';
 
 interface PromptCardProps {
   prompt: AIPrompt;
@@ -9,6 +9,7 @@ interface PromptCardProps {
   onCopy: () => void;
   onTogglePin: () => void;
   onUpdatePrompt?: (updatedPrompt: AIPrompt) => void;
+  onSaveNewVersion?: (promptObj: AIPrompt, varValues: Record<string, string>, versionName: string) => string | null;
   isCopied: boolean;
   versionCount?: number;
   onClick?: () => void;
@@ -21,12 +22,16 @@ export const PromptCard: React.FC<PromptCardProps> = ({
   onCopy,
   onTogglePin,
   onUpdatePrompt,
+  onSaveNewVersion,
   isCopied,
   versionCount = 1,
   onClick
 }) => {
   const [expandedContent, setExpandedContent] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showVersionTitlePrompt, setShowVersionTitlePrompt] = useState(false);
+  const [versionTitle, setVersionTitle] = useState('');
+  const [editedContent, setEditedContent] = useState<string | null>(null);
 
   // Internal flag preserved but not rendered
 
@@ -116,10 +121,10 @@ export const PromptCard: React.FC<PromptCardProps> = ({
               <span>Prompt Content</span>
             </div>
             <textarea
-              value={prompt.content}
+              value={editedContent !== null ? editedContent : prompt.content}
               onChange={(e) => {
                 e.stopPropagation();
-                onUpdatePrompt?.({ ...prompt, content: e.target.value });
+                setEditedContent(e.target.value);
               }}
               onClick={(e) => e.stopPropagation()}
               className="w-full min-h-[300px] bg-background/80 rounded-lg text-foreground/80 text-xs font-mono p-4 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/30 border border-border/30"
@@ -145,6 +150,83 @@ export const PromptCard: React.FC<PromptCardProps> = ({
             </div>
           )}
         </div>
+
+        {/* Save actions */}
+        {onUpdatePrompt && (editedContent !== null) && (
+          <div className="mt-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+            {showVersionTitlePrompt && (
+              <div className="p-3 bg-muted/50 border border-border rounded-lg space-y-2 animate-in fade-in slide-in-from-top-1">
+                <label className="text-xs font-semibold text-foreground/80">Version title</label>
+                <input
+                  autoFocus
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:ring-2 focus:ring-primary/50 outline-none text-xs"
+                  placeholder="e.g. Added professional tone..."
+                  value={versionTitle}
+                  onChange={(e) => setVersionTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && versionTitle.trim() && onSaveNewVersion) {
+                      e.preventDefault();
+                      const currentContent = editedContent !== null ? editedContent : prompt.content;
+                      const updated = { ...prompt, content: currentContent };
+                      onSaveNewVersion(updated, {}, versionTitle.trim());
+                      setShowVersionTitlePrompt(false);
+                      setVersionTitle('');
+                      setEditedContent(null);
+                    }
+                  }}
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => { setShowVersionTitlePrompt(false); setVersionTitle(''); }}
+                    className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-md font-bold text-[10px] text-muted-foreground transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!versionTitle.trim()}
+                    onClick={() => {
+                      if (onSaveNewVersion && versionTitle.trim()) {
+                        const currentContent = editedContent !== null ? editedContent : prompt.content;
+                        const updated = { ...prompt, content: currentContent };
+                        onSaveNewVersion(updated, {}, versionTitle.trim());
+                        setShowVersionTitlePrompt(false);
+                        setVersionTitle('');
+                        setEditedContent(null);
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-primary hover:bg-primary/90 rounded-md font-bold text-[10px] text-primary-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Save New Version
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const currentContent = editedContent !== null ? editedContent : prompt.content;
+                  onUpdatePrompt({ ...prompt, content: currentContent });
+                  setEditedContent(null);
+                }}
+                className="flex-1 py-2 px-3 bg-primary hover:bg-primary/90 rounded-lg font-bold text-xs text-primary-foreground transition-all active:scale-95"
+              >
+                SAVE
+              </button>
+              {onSaveNewVersion && (
+                <button
+                  type="button"
+                  onClick={() => { setShowVersionTitlePrompt(true); setVersionTitle(''); }}
+                  className="flex-1 py-2 px-3 bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Layers size={13} /> SAVE NEW VERSION
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="px-6 py-4 bg-muted/50 border-t border-border flex items-center justify-between">

@@ -1393,6 +1393,7 @@ const Index: React.FC = () => {
                                 onCopy={() => handleCopy(prompt)}
                                 onTogglePin={() => togglePin(prompt.id)}
                                 onUpdatePrompt={handleUpdatePrompt}
+                                onSaveNewVersion={handleSaveNewVersion}
                                 isCopied={lastCopiedId === prompt.id}
                                 versionCount={groupedPrompts.get(prompt.parentId || prompt.id)?.length}
                                 onClick={() => handlePromptDetailClick(prompt)}
