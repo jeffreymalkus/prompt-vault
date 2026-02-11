@@ -530,8 +530,7 @@ const Index: React.FC = () => {
 
   const handleSavePrompt = (data: Partial<AIPrompt>, saveAsNewVersion: boolean, commitMessage?: string) => {
     if (editingPrompt && !saveAsNewVersion) {
-      // Snapshot current state before overwriting
-    createVersionSnapshot(editingPrompt, commitMessage || 'Updated prompt');
+      // Normal Save: update draft only, do NOT create a snapshot
       setPrompts(prev => prev.map(p => p.id === editingPrompt.id ? { ...p, ...data } as AIPrompt : p));
     } else {
       if (editingPrompt) {
@@ -603,22 +602,12 @@ const Index: React.FC = () => {
   };
 
   const handleUpdateCurrent = (promptObj: AIPrompt, varValues: Record<string, string>) => {
-    ensureBaselineSnapshot(promptObj);
-    const snapshot: PromptVersionSnapshot = {
-      id: generateId(),
-      promptId: promptObj.parentId || promptObj.id,
-      content: promptObj.content,
-      title: promptObj.title,
-      description: promptObj.description,
-      tags: [...promptObj.tags],
-      category: promptObj.category,
-      folder: promptObj.folder,
-      commitMessage: 'Updated current',
-      createdAt: Date.now(),
-      version: promptObj.version,
-      variableValues: { ...varValues },
-    };
-    setVersionSnapshots(prev => [snapshot, ...prev]);
+    // Normal Save: update draft content + variables ONLY, do NOT create a snapshot
+    setPrompts(prev => prev.map(p =>
+      p.id === promptObj.id
+        ? { ...p, content: promptObj.content, title: promptObj.title, description: promptObj.description, tags: [...promptObj.tags], category: promptObj.category, folder: promptObj.folder, variables: promptObj.variables || [] }
+        : p
+    ));
   };
 
   const handleSaveNewVersion = (promptObj: AIPrompt, varValues: Record<string, string>, versionName: string): string | null => {
