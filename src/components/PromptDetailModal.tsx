@@ -16,15 +16,16 @@ function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Detects variables from bracketed tokens only: [VAR_NAME] */
+/** Detects variables from bracketed tokens: [VAR_NAME] or [VAR_NAME: suggestions] */
 function extractAllVariables(content: string): string[] {
   const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
-  const regex = /\[(.*?)\]/g;
+  const regex = /\[([^\]]+)\]/g;
   const seen = new Set<string>();
   const result: string[] = [];
   let match;
   while ((match = regex.exec(content)) !== null) {
-    const normalized = match[1].trim().toUpperCase().replace(/\s+/g, '_');
+    const raw = match[1].split(':')[0];
+    const normalized = raw.trim().toUpperCase().replace(/\s+/g, '_');
     if (!normalized || stoplist.has(normalized) || seen.has(normalized)) continue;
     seen.add(normalized);
     result.push(normalized);
@@ -32,13 +33,13 @@ function extractAllVariables(content: string): string[] {
   return result;
 }
 
-/** Replace bracketed variable patterns with their values */
+/** Replace bracketed variable patterns with their values: [KEY] or [KEY: ...] */
 function substituteVariables(content: string, values: Record<string, string>): string {
   let result = content;
   for (const [name, value] of Object.entries(values)) {
     if (!value) continue;
-    // Match [VAR_NAME] with flexible spacing/casing inside brackets
-    result = result.replace(new RegExp(`\\[${escapeRegex(name)}\\]`, 'gi'), value);
+    // Match [KEY] or [KEY: anything]
+    result = result.replace(new RegExp(`\\[${escapeRegex(name)}(?::[^\\]]*)?\\]`, 'gi'), value);
   }
   return result;
 }
@@ -53,9 +54,9 @@ function buildHighlightedPreview(
 
   const patternParts = filledEntries.map(([name]) => {
     const e = escapeRegex(name);
-    return `\\[${e}\\]`;
+    return `\\[${e}(?::[^\\]]*)?\\]`;
   });
-  const combined = new RegExp(`(${patternParts.join('|')})`, 'g');
+  const combined = new RegExp(`(${patternParts.join('|')})`, 'gi');
 
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
@@ -70,7 +71,7 @@ function buildHighlightedPreview(
     let replacementValue = matched;
     for (const [name, value] of filledEntries) {
       const e = escapeRegex(name);
-      if (new RegExp(`^\\[${e}\\]$`, 'i').test(matched)) {
+      if (new RegExp(`^\\[${e}(?::[^\\]]*)?\\]$`, 'i').test(matched)) {
         replacementValue = value;
         break;
       }

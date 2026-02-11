@@ -281,12 +281,13 @@ export const DEFAULT_FOLDERS = [
 
 export function detectVariables(content: string): string[] {
   const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
-  const regex = /\[(.*?)\]/g;
+  const regex = /\[([^\]]+)\]/g;
   const seen = new Set<string>();
   const result: string[] = [];
   let match;
   while ((match = regex.exec(content)) !== null) {
-    const normalized = match[1].trim().toUpperCase().replace(/\s+/g, '_');
+    const raw = match[1].split(':')[0];
+    const normalized = raw.trim().toUpperCase().replace(/\s+/g, '_');
     if (!normalized || stoplist.has(normalized) || seen.has(normalized)) continue;
     seen.add(normalized);
     result.push(normalized);
