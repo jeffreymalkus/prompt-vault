@@ -279,15 +279,15 @@ export const DEFAULT_FOLDERS = [
 // UTILITY FUNCTIONS
 // ===============================
 
+const PLACEHOLDER_REGEX = /\[([^\]:\]]+)(?::[^\]]*)?\]/g;
+export { PLACEHOLDER_REGEX };
+
 export function detectVariables(content: string): string[] {
   const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
-  const regex = /\[([^\]]+)\]/g;
   const seen = new Set<string>();
   const result: string[] = [];
-  let match;
-  while ((match = regex.exec(content)) !== null) {
-    const raw = match[1].split(':')[0];
-    const normalized = raw.trim().toUpperCase().replace(/\s+/g, '_');
+  for (const m of content.matchAll(PLACEHOLDER_REGEX)) {
+    const normalized = m[1].trim().toUpperCase().replace(/\s+/g, '_');
     if (!normalized || stoplist.has(normalized) || seen.has(normalized)) continue;
     seen.add(normalized);
     result.push(normalized);

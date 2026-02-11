@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { AIPrompt } from '../types';
+import { AIPrompt, PLACEHOLDER_REGEX } from '../types';
 import { X, Copy, Check, Variable, Eye, Clock, Save, FilePlus, RotateCcw } from 'lucide-react';
 
 interface PromptDetailModalProps {
@@ -12,20 +12,13 @@ interface PromptDetailModalProps {
   initialVarValues?: Record<string, string>;
 }
 
-function escapeRegex(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 /** Detects variables from bracketed tokens: [VAR_NAME] or [VAR_NAME: suggestions] */
 function extractAllVariables(content: string): string[] {
   const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
-  const regex = /\[([^\]]+)\]/g;
   const seen = new Set<string>();
   const result: string[] = [];
-  let match;
-  while ((match = regex.exec(content)) !== null) {
-    const raw = match[1].split(':')[0];
-    const normalized = raw.trim().toUpperCase().replace(/\s+/g, '_');
+  for (const m of content.matchAll(PLACEHOLDER_REGEX)) {
+    const normalized = m[1].trim().toUpperCase().replace(/\s+/g, '_');
     if (!normalized || stoplist.has(normalized) || seen.has(normalized)) continue;
     seen.add(normalized);
     result.push(normalized);
@@ -35,13 +28,11 @@ function extractAllVariables(content: string): string[] {
 
 /** Replace bracketed variable patterns with their values: [KEY] or [KEY: ...] */
 function substituteVariables(content: string, values: Record<string, string>): string {
-  let result = content;
-  for (const [name, value] of Object.entries(values)) {
-    if (!value) continue;
-    // Match [KEY] or [KEY: anything]
-    result = result.replace(new RegExp(`\\[${escapeRegex(name)}(?::[^\\]]*)?\\]`, 'gi'), value);
-  }
-  return result;
+  return content.replace(PLACEHOLDER_REGEX, (full, rawKey) => {
+    const key = String(rawKey).trim().toUpperCase().replace(/\s+/g, '_');
+    const v = values[key];
+    return v !== undefined && v !== '' ? v : full;
+  });
 }
 
 /** Build React nodes with highlighted substitutions */
@@ -49,39 +40,28 @@ function buildHighlightedPreview(
   content: string,
   values: Record<string, string>
 ): React.ReactNode[] {
-  const filledEntries = Object.entries(values).filter(([, v]) => v);
-  if (filledEntries.length === 0) return [content];
-
-  const patternParts = filledEntries.map(([name]) => {
-    const e = escapeRegex(name);
-    return `\\[${e}(?::[^\\]]*)?\\]`;
-  });
-  const combined = new RegExp(`(${patternParts.join('|')})`, 'gi');
+  const filledKeys = new Set(
+    Object.entries(values).filter(([, v]) => v).map(([k]) => k)
+  );
+  if (filledKeys.size === 0) return [content];
 
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
-  let match;
   let key = 0;
 
-  while ((match = combined.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(content.slice(lastIndex, match.index));
-    }
-    const matched = match[0];
-    let replacementValue = matched;
-    for (const [name, value] of filledEntries) {
-      const e = escapeRegex(name);
-      if (new RegExp(`^\\[${e}(?::[^\\]]*)?\\]$`, 'i').test(matched)) {
-        replacementValue = value;
-        break;
-      }
+  for (const match of content.matchAll(PLACEHOLDER_REGEX)) {
+    const rawKey = String(match[1]).trim().toUpperCase().replace(/\s+/g, '_');
+    if (!filledKeys.has(rawKey)) continue;
+
+    if (match.index! > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index!));
     }
     parts.push(
       <mark key={key++} className="bg-accent/25 text-accent-foreground rounded px-0.5">
-        {replacementValue}
+        {values[rawKey]}
       </mark>
     );
-    lastIndex = combined.lastIndex;
+    lastIndex = match.index! + match[0].length;
   }
   if (lastIndex < content.length) {
     parts.push(content.slice(lastIndex));
