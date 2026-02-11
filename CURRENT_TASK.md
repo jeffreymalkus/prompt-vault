@@ -1,34 +1,37 @@
-# CURRENT TASK — Phase 1E: Derive Next Version from Snapshots
+
+# CURRENT TASK — Phase 1F: Edit Screen UX (Save vs Save New Version)
 
 ## Scope (modify only)
-- src/pages/Index.tsx
+- src/components/PromptModal.tsx
 
-## Problem
-Version numbers are currently derived from promptObj.version.
-This can cause incorrect numbering or duplicate v1.
+## Objective
+Make the edit screen buttons and flow unambiguous and consistent.
 
 ## Required behavior
 
-1) When creating a new version (inside handleSaveNewVersion / createVersionSnapshot):
-   - Compute nextVersion as:
-       nextVersion = 1 + max(snapshot.version)
-     where snapshot.promptId === (prompt.parentId || prompt.id)
+1) Rename the primary draft-save action:
+   - Button text "Update Current" must become "Save".
+   - This action must update the current draft only.
+   - It must NOT create a snapshot/version.
 
-   - If no snapshots exist for that promptId:
-       nextVersion = 1
+2) Rename the version creation action:
+   - Button text "Save as vX" (or similar) must become "Save New Version".
+   - Do NOT show the version number in the button label.
 
-2) Do NOT rely on promptObj.version to compute the next version.
+3) Add a minimal title prompt when "Save New Version" is clicked:
+   - Show a small inline modal/dialog (or simple inline panel) with:
+     - single text input: "Version title"
+     - buttons: Cancel, Save New Version
+   - If Cancel or empty title: do nothing (no snapshot).
+   - If title provided: call the existing onSaveNewVersion handler with the title exactly as typed.
 
-3) After creating the snapshot:
-   - Update the prompt's version field to nextVersion.
-
-4) No other logic changes.
-   - Do not modify restore logic.
-   - Do not modify draft save logic.
-   - Do not modify UI.
+## Constraints
+- Do not modify any logic in Index.tsx.
+- Do not change version numbering logic.
+- Do not change restore behavior.
+- No UI redesign beyond the minimal title prompt.
 
 ## Done when (live app)
-- Creating multiple versions results in clean sequence:
-    v1, v2, v3, v4...
-- No duplicate v1 ever appears.
-- Version numbers increment correctly even after reload.
+- Edit screen shows two buttons: "Save" and "Save New Version".
+- Clicking Save updates draft only (no new version).
+- Clicking Save New Version prompts for a title and then creates exactly one new version with that title.
