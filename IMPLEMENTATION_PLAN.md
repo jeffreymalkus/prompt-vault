@@ -1,192 +1,208 @@
-# Prompt Vault --- Implementation Plan
+# Prompt Vault — Implementation Plan (v3)
 
-## Overview
+## Direction
 
-Prompt Vault is being repositioned as a human-centered instruction
-vault.
+Prompt Vault is an organizer for instruction assets.
 
-This implementation has two tracks:
+It consists of:
 
-1.  Fix versioning trust issues.
-2.  Introduce a SKILL.md-compatible Package system for file-native
-    storage, GitHub import, and export.
+1. Prompt Organizer (with stable versioning)
+2. Skill Registry (ecosystem-aware metadata layer)
 
-Packages must be compatible with `npx skills add`.
+It does NOT:
 
-------------------------------------------------------------------------
+- Store full skill file trees
+- Replicate GitHub repositories
+- Act as a package manager
+- Execute skills
+- Install skills automatically
 
-# SKILL.md Compatibility --- Preserve First, Enforce Light
+GitHub stores files.
+CLIs install skills.
+Prompt Vault organizes knowledge.
 
--   Entrypoint file: `SKILL.md`
--   YAML frontmatter required (name, description; others optional)
--   Skill directory structure:
-    -   SKILL.md
-    -   Optional: scripts/, references/, assets/
+---
 
-Rules:
+# Phase 1 — Stabilize Prompt Versioning
 
--   On import:
-    -   Do NOT enforce kebab-case or spec limits.
-    -   Preserve all frontmatter keys.
-    -   Preserve file names and folder structure exactly.
--   On export:
-    -   Sanitize folder name (lowercase, spaces → hyphens).
-    -   Warn on spec violations.
-    -   Never hard-fail export.
+## Objective
 
-Unknown frontmatter keys must always be preserved.
+Establish trustworthy version history behavior.
 
-------------------------------------------------------------------------
+## Files
 
-# Phase 1 --- Fix Versioning Invariants
-
-## Files to Modify
-
--   src/pages/Index.tsx
--   src/components/VersionHistoryDrawer.tsx
--   src/components/PromptModal.tsx (verify only)
+- src/pages/Index.tsx
+- src/components/VersionHistoryDrawer.tsx
+- src/components/PromptModal.tsx (verify only)
 
 ## Requirements
 
--   Normal Save updates prompt data only.
--   Normal Save does NOT create a snapshot.
--   Only "Save New Version" creates a snapshot.
--   Restore does NOT create a snapshot.
--   Snapshots are immutable.
--   v1 baseline exists and cannot be deleted.
--   commitMessage must equal exactly what the user typed.
+- Normal Save updates draft only.
+- Normal Save does NOT create a snapshot.
+- Only "Save New Version" creates a snapshot.
+- Restore does NOT create a snapshot.
+- Snapshots are immutable.
+- v1 baseline exists and cannot be deleted.
+- commitMessage must remain exactly as typed.
 
-## Specific Adjustments
+## Completion Criteria
 
-### src/pages/Index.tsx
+- Manual tests confirm invariant behavior.
+- npm run build succeeds.
+- No unintended snapshot creation occurs.
 
--   Remove all createVersionSnapshot() calls from handleSavePrompt.
--   Remove any auto-snapshot creation from handleUpdateCurrent.
--   Keep handleSaveNewVersion as the only snapshot creation path.
--   Ensure ensureBaselineSnapshot does not regenerate v1.
+---
 
-### src/components/VersionHistoryDrawer.tsx
+# Phase 2 — Skill Registry Data Model
 
-Replace:
+## Objective
 
-const canDelete = true;
+Create a structured metadata system for tracking skills across AI ecosystems.
 
-With:
+## Data Model
 
-const isV1 = v.version === 1; const canDelete = !isV1;
+New type: `SkillRecord`
 
-------------------------------------------------------------------------
+SkillRecord {
+id: string
+name: string
+// Where the skill runs
+runtime: 'claude-code' | 'vercel' | 'opra' | 'chatgpt' | 'gemini' | 'other'
+// Source reference
+sourceUrl: string
+// Description
+description: string
+problemSolved: string
+// Technical compatibility
+toolsRequired: string[] // e.g. shell, filesystem, web, repo
+compatibleWith: string[] // optional additional environment notes
+// How to install or activate
+installationMethod: string // plain text instructions
+// Personal tracking
+notes: string
+tags: string[]
+status: 'saved' | 'tested' | 'adopted' | 'rejected'
+createdAt: number
+updatedAt: number
+}
 
-# Phase 2 --- Package Data Model + Storage
 
-## New File
+## Storage
 
-src/types/package.ts
+- Local-first using localStorage.
+- Key: `prompt_vault_skills`
+- JSON serialized array of SkillRecord.
 
-### Types
+No file storage.
+No recursive imports.
+No SKILL.md parsing.
 
-export type PackageSourceType = 'local' \| 'github' \| 'url';
+---
 
-export interface PackageFile { path: string; content: string; sha?:
-string; }
+# Phase 3 — Skill Registry UI
 
-export interface Package { id: string; sourceType: PackageSourceType;
-sourceRef?: string; entrypoint: string; files: PackageFile\[\];
-frontmatter: Record\<string, any\>; searchIndexFields: { name: string;
-description: string; tags: string\[\]; keywords: string\[\]; };
-category: string; folder: string; createdAt: number; updatedAt: number;
-usageCount: number; isPinned?: boolean; }
+## Components
 
-### Utilities (same file)
+- SkillCard.tsx
+- SkillModal.tsx
+- SkillDetailView.tsx
 
--   parseFrontmatter(markdown)
--   serializeFrontmatter(frontmatter, body)
--   assemblePackageForLLM(pkg)
--   skillToPackage(skill, prompts)
+## Required Features
 
-## Modify src/types/index.ts
+- Add skill manually.
+- Edit skill metadata.
+- View full skill details.
+- Store installation instructions as text block.
+- Tag skills.
+- Assign status (saved / tested / adopted / rejected).
 
--   Add 'packages' to ActiveSection
--   Re-export from ./package
+---
 
-## Modify src/pages/Index.tsx
+# Phase 4 — Filtering & Organization
 
--   Add packages state
--   Persist to prompt_vault_packages (localStorage)
--   Add CRUD handlers
--   Add filteredPackages
--   Add one-time skill → package migration
+## Objective
 
-------------------------------------------------------------------------
+Enable rapid clarity across many skills.
 
-# Phase 3 --- GitHub Import
+## Add
 
-## Guardrails
+- Search by:
+  - name
+  - description
+  - tags
 
--   Max 50 files
--   Max 512KB total content
--   Skip binaries (.png, .jpg, .zip, etc.)
--   Skip individual files \> 100KB
--   Warn if localStorage exceeds 2MB
+- Filter by:
+  - runtime
+  - status
+  - toolsRequired
 
-## New File
+- Sort by:
+  - recently added
+  - recently updated
+  - adopted first
 
-src/utils/githubImporter.ts
+Prompts and Skills remain separate sections.
 
-Functions:
+---
 
--   parseGitHubURL(url)
--   fetchGitHubDirectory(...)
--   fetchGitHubFile(...)
--   importGitHubPackage(url)
+# Phase 5 — Backup & Export
 
-Entrypoint priority:
+## Objective
 
-SKILL.md \> AGENTS.md \> first .md file
+Protect user data without backend complexity.
 
-------------------------------------------------------------------------
+## Add
 
-# Phase 4 --- Package UI
+- "Export All Data" button:
+  - Downloads full JSON snapshot:
+    - prompts
+    - versions
+    - skills
 
-New components:
+- Optional later:
+  - Import backup
 
--   PackageCard.tsx
--   PackageDetailModal.tsx
--   PackageModal.tsx
--   PackageImportModal.tsx
+No SKILL.md export.
+No directory reconstruction.
+No CLI integration.
 
-Modify:
+---
 
--   NavigationTabs.tsx
--   Index.tsx
+# Non-Goals
 
-------------------------------------------------------------------------
+The following are explicitly excluded:
 
-# Phase 5 --- Export Actions
+- Recursive GitHub import
+- SKILL.md preservation logic
+- File tree editing
+- Binary file handling
+- File size guardrails
+- Automated skill installation
+- Multi-user sync
+- Backend database (for now)
 
-New file:
+---
 
-src/utils/packageExporter.ts
+# Development Discipline
 
-Functions:
+- Execute phase-by-phase.
+- No architecture re-planning during execution.
+- Modify only declared files per phase.
+- Use CURRENT_TASK.md for bounded tasks.
+- Treat markdown specs as persistent memory.
 
--   copyPackageForLLM(pkg, includeSupporting = false)
--   downloadPackageAsText(pkg)
--   exportAsSkillDirectory(pkg)
+---
 
-ZIP export deferred.
+# Completion Definition
 
-------------------------------------------------------------------------
+Prompt Vault v1 is complete when:
 
-# Verification Checklist
+- Prompt versioning is stable and trusted.
+- Skills can be added with runtime clarity.
+- Installation instructions are easily accessible.
+- Filtering reduces cognitive load.
+- The system feels organized and durable.
 
-1.  Save does not create snapshot.
-2.  Save New Version creates snapshot.
-3.  Restore does not create snapshot.
-4.  v1 cannot be deleted.
-5.  Packages create/edit/save correctly.
-6.  GitHub import preserves structure.
-7.  Unknown frontmatter keys are preserved.
-8.  Export produces valid SKILL.md format.
-9.  npm run build succeeds.
-10. Deployment succeeds.
+Stability over novelty.
+Organization over automation.
+Clarity over complexity.
