@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { AIPrompt, PromptVersionSnapshot } from '../types';
-import { X, RotateCcw, Clock, GitCommit, ChevronRight, Trash2 } from 'lucide-react';
+import { X, RotateCcw, Clock, GitCommit, ChevronRight } from 'lucide-react';
 import { diffWords } from 'diff';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent } from './ui/card';
@@ -123,15 +123,6 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                           : 'hover:bg-muted border border-transparent'
                       }`}
                     >
-                      {onDeleteVersion && canDelete && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(e, v.id); }}
-                          className="absolute top-2 right-2 shrink-0 p-1 hover:bg-destructive/20 rounded transition-all"
-                          title="Delete version"
-                        >
-                          <Trash2 size={14} className="text-red-500" />
-                        </button>
-                      )}
                       <div className="flex items-center gap-2 mb-1">
                           <GitCommit size={12} className="text-primary shrink-0" />
                           <span className="font-bold text-foreground text-xs truncate">
@@ -154,6 +145,14 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                       <span className="text-[10px] text-muted-foreground/50 ml-5 mt-1 block">
                         {new Date(v.createdAt).toLocaleDateString()} {new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
+                      {onDeleteVersion && canDelete && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(e, v.id); }}
+                          className="ml-5 mt-2 px-2 py-1 text-[11px] font-semibold text-red-500 hover:bg-destructive/20 rounded transition-all"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                   );
                 })}
