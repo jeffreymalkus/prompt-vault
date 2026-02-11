@@ -282,15 +282,19 @@ export const DEFAULT_FOLDERS = [
 const PLACEHOLDER_REGEX = /\[([^\]:\]]+)(?::[^\]]*)?\]/g;
 export { PLACEHOLDER_REGEX };
 
+export function canonicalKey(raw: string): string {
+  return raw.split(':')[0].trim();
+}
+
 export function detectVariables(content: string): string[] {
   const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
   const seen = new Set<string>();
   const result: string[] = [];
   for (const m of content.matchAll(PLACEHOLDER_REGEX)) {
-    const normalized = m[1].trim().toUpperCase().replace(/\s+/g, '_');
-    if (!normalized || stoplist.has(normalized) || seen.has(normalized)) continue;
-    seen.add(normalized);
-    result.push(normalized);
+    const key = canonicalKey(m[1]);
+    if (!key || stoplist.has(key.toUpperCase()) || seen.has(key)) continue;
+    seen.add(key);
+    result.push(key);
   }
   return result;
 }

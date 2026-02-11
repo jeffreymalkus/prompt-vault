@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { AIPrompt, PLACEHOLDER_REGEX } from '../types';
+import { AIPrompt, PLACEHOLDER_REGEX, canonicalKey } from '../types';
 import { X, Copy, Check, Variable, Eye, Clock, Save, FilePlus, RotateCcw } from 'lucide-react';
 
 interface PromptDetailModalProps {
@@ -12,16 +12,16 @@ interface PromptDetailModalProps {
   initialVarValues?: Record<string, string>;
 }
 
-/** Detects variables from bracketed tokens: [VAR_NAME] or [VAR_NAME: suggestions] */
+/** Detects variables from bracketed tokens: [KEY] or [KEY: suggestions] */
 function extractAllVariables(content: string): string[] {
   const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
   const seen = new Set<string>();
   const result: string[] = [];
   for (const m of content.matchAll(PLACEHOLDER_REGEX)) {
-    const normalized = m[1].trim().toUpperCase().replace(/\s+/g, '_');
-    if (!normalized || stoplist.has(normalized) || seen.has(normalized)) continue;
-    seen.add(normalized);
-    result.push(normalized);
+    const key = canonicalKey(m[1]);
+    if (!key || stoplist.has(key.toUpperCase()) || seen.has(key)) continue;
+    seen.add(key);
+    result.push(key);
   }
   return result;
 }
@@ -29,7 +29,7 @@ function extractAllVariables(content: string): string[] {
 /** Replace bracketed variable patterns with their values: [KEY] or [KEY: ...] */
 function substituteVariables(content: string, values: Record<string, string>): string {
   return content.replace(PLACEHOLDER_REGEX, (full, rawKey) => {
-    const key = String(rawKey).trim().toUpperCase().replace(/\s+/g, '_');
+    const key = canonicalKey(rawKey);
     const v = values[key];
     return v !== undefined && v !== '' ? v : full;
   });
@@ -47,18 +47,18 @@ function buildHighlightedPreview(
 
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
-  let key = 0;
+  let idx = 0;
 
   for (const match of content.matchAll(PLACEHOLDER_REGEX)) {
-    const rawKey = String(match[1]).trim().toUpperCase().replace(/\s+/g, '_');
-    if (!filledKeys.has(rawKey)) continue;
+    const key = canonicalKey(match[1]);
+    if (!filledKeys.has(key)) continue;
 
     if (match.index! > lastIndex) {
       parts.push(content.slice(lastIndex, match.index!));
     }
     parts.push(
-      <mark key={key++} className="bg-accent/25 text-accent-foreground rounded px-0.5">
-        {values[rawKey]}
+      <mark key={idx++} className="bg-accent/25 text-accent-foreground rounded px-0.5">
+        {values[key]}
       </mark>
     );
     lastIndex = match.index! + match[0].length;
