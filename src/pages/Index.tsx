@@ -511,7 +511,7 @@ const Index: React.FC = () => {
     });
   };
 
-  const createVersionSnapshot = (prompt: AIPrompt, commitMessage: string = '') => {
+  const createVersionSnapshot = (prompt: AIPrompt, commitMessage: string = '', opts?: { versionName?: string; variableValues?: Record<string, string>; versionOverride?: number }) => {
     const snapshot: PromptVersionSnapshot = {
       id: generateId(),
       promptId: prompt.parentId || prompt.id,
@@ -522,8 +522,10 @@ const Index: React.FC = () => {
       category: prompt.category,
       folder: prompt.folder,
       commitMessage,
+      versionName: opts?.versionName,
       createdAt: Date.now(),
-      version: prompt.version,
+      version: opts?.versionOverride ?? prompt.version,
+      variableValues: opts?.variableValues ? { ...opts.variableValues } : undefined,
     };
     setVersionSnapshots(prev => [snapshot, ...prev]);
   };
@@ -533,10 +535,6 @@ const Index: React.FC = () => {
       // Normal Save: update draft only, do NOT create a snapshot
       setPrompts(prev => prev.map(p => p.id === editingPrompt.id ? { ...p, ...data } as AIPrompt : p));
     } else {
-      if (editingPrompt) {
-        // Snapshot old version before creating new
-        createVersionSnapshot(editingPrompt, commitMessage || 'Previous version');
-      }
       const newPrompt: AIPrompt = {
         id: generateId(),
         title: data.title || 'Untitled',
@@ -628,22 +626,11 @@ const Index: React.FC = () => {
       return 'duplicate-name';
     }
 
-    const snapshot: PromptVersionSnapshot = {
-      id: generateId(),
-      promptId: promptKey,
-      content: promptObj.content,
-      title: promptObj.title,
-      description: promptObj.description,
-      tags: [...promptObj.tags],
-      category: promptObj.category,
-      folder: promptObj.folder,
-      commitMessage: trimmedName,
+    createVersionSnapshot(promptObj, trimmedName, {
       versionName: trimmedName,
-      createdAt: Date.now(),
-      version: promptObj.version + 1,
-      variableValues: { ...varValues },
-    };
-    setVersionSnapshots(prev => [snapshot, ...prev]);
+      variableValues: varValues,
+      versionOverride: promptObj.version + 1,
+    });
     
     // Increment prompt version
     setPrompts(prev => prev.map(p => 
