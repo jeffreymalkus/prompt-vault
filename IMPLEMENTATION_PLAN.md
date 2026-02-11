@@ -1,4 +1,4 @@
-# Prompt Vault — Implementation Plan (v3)
+# Prompt Vault — Implementation Plan (v4)
 
 ## Direction
 
@@ -8,14 +8,16 @@ It consists of:
 
 1. Prompt Organizer (with stable versioning)
 2. Skill Registry (ecosystem-aware metadata layer)
+3. Backup & Restore safety net
 
 It does NOT:
 
-- Store full skill file trees
-- Replicate GitHub repositories
+- Store skill file trees
+- Mirror GitHub repositories
 - Act as a package manager
-- Execute skills
-- Install skills automatically
+- Execute or auto-install skills
+- Integrate directly with CLIs
+- Provide multi-user sync (v1 is local-first)
 
 GitHub stores files.
 CLIs install skills.
@@ -23,17 +25,11 @@ Prompt Vault organizes knowledge.
 
 ---
 
-# Phase 1 — Stabilize Prompt Versioning
+# Phase 1 — Prompt Versioning Stability
 
 ## Objective
 
 Establish trustworthy version history behavior.
-
-## Files
-
-- src/pages/Index.tsx
-- src/components/VersionHistoryDrawer.tsx
-- src/components/PromptModal.tsx (verify only)
 
 ## Requirements
 
@@ -47,9 +43,9 @@ Establish trustworthy version history behavior.
 
 ## Completion Criteria
 
-- Manual tests confirm invariant behavior.
-- npm run build succeeds.
-- No unintended snapshot creation occurs.
+- Manual verification confirms invariants.
+- No unintended snapshot creation.
+- Build succeeds.
 
 ---
 
@@ -57,152 +53,182 @@ Establish trustworthy version history behavior.
 
 ## Objective
 
-Create a structured metadata system for tracking skills across AI ecosystems.
+Introduce structured metadata system for tracking external skills.
 
-## Data Model
-
-New type: `SkillRecord`
+## SkillRecord Schema
 
 SkillRecord {
-id: string
-name: string
-// Where the skill runs
-runtime: 'claude-code' | 'vercel' | 'opra' | 'chatgpt' | 'gemini' | 'other'
-// Source reference
-sourceUrl: string
-// Description
-description: string
-problemSolved: string
-// Technical compatibility
-toolsRequired: string[] // e.g. shell, filesystem, web, repo
-compatibleWith: string[] // optional additional environment notes
-// How to install or activate
-installationMethod: string // plain text instructions
-// Personal tracking
-notes: string
-tags: string[]
-status: 'saved' | 'tested' | 'adopted' | 'rejected'
-createdAt: number
-updatedAt: number
-}
+  id: string
 
+  name: string
+
+  runtime:
+    'claude-code' |
+    'vercel' |
+    'opra' |
+    'chatgpt' |
+    'gemini' |
+    'other'
+
+  sourceUrl: string
+
+  description: string
+  problemSolved: string
+
+  toolsRequired: string[]
+  compatibleWith: string[]
+
+  installationMethod: string
+
+  notes: string
+  tags: string[]
+
+  status: 'saved' | 'tested' | 'adopted' | 'rejected'
+
+  createdAt: number
+  updatedAt: number
+}
 
 ## Storage
 
-- Local-first using localStorage.
-- Key: `prompt_vault_skills`
-- JSON serialized array of SkillRecord.
+- Local-first (localStorage)
+- Key: prompt_vault_skills
+- JSON serialized array of SkillRecord
 
-No file storage.
-No recursive imports.
+No file replication.
+No recursive GitHub import.
 No SKILL.md parsing.
 
 ---
 
-# Phase 3 — Skill Registry UI
-
-## Components
-
-- SkillCard.tsx
-- SkillModal.tsx
-- SkillDetailView.tsx
-
-## Required Features
-
-- Add skill manually.
-- Edit skill metadata.
-- View full skill details.
-- Store installation instructions as text block.
-- Tag skills.
-- Assign status (saved / tested / adopted / rejected).
-
----
-
-# Phase 4 — Filtering & Organization
+# Phase 3 — Skill Registry UI (CRUD)
 
 ## Objective
 
-Enable rapid clarity across many skills.
+Allow full management of SkillRecord entries.
 
-## Add
+## 3A — List + Read-Only Cards
 
-- Search by:
+- Render all skills.
+- Show:
   - name
-  - description
-  - tags
-
-- Filter by:
   - runtime
+  - truncated description
   - status
-  - toolsRequired
+  - tags
+- "Open Source" button.
+- Empty state message if no skills.
 
-- Sort by:
-  - recently added
-  - recently updated
-  - adopted first
+## 3B — Create Skill
 
-Prompts and Skills remain separate sections.
+- "Add Skill" button.
+- Modal form for all schema fields.
+- Save creates new SkillRecord with timestamps.
+- Persist to localStorage.
+
+## 3C — Edit, Delete, Copy Install
+
+- Edit button (prefilled modal).
+- Delete button (confirm required).
+- Copy Install button (copies installationMethod).
+- Persist updates correctly.
 
 ---
 
-# Phase 5 — Backup & Export
+# Phase 4 — Filtering & Sorting
+
+## Objective
+
+Enable clarity across many skills.
+
+## 4A — Search + Runtime/Status Filters
+
+Add:
+
+- Search (matches name, description, tags, runtime)
+- Runtime filter dropdown
+- Status filter dropdown
+
+Filters must compose.
+
+## 4B — Tools Filter + Sorting
+
+Add:
+
+- ToolsRequired filter dropdown (deduped tool list)
+- Sort options:
+  - Recently updated (default)
+  - Recently added
+  - Name A–Z
+  - Status (adopted → tested → saved → rejected)
+
+Apply filtering first, sorting last.
+
+No filter persistence in v1.
+
+---
+
+# Phase 5 — Backup & Restore
 
 ## Objective
 
 Protect user data without backend complexity.
 
-## Add
+## 5A — Export All Data
 
-- "Export All Data" button:
-  - Downloads full JSON snapshot:
-    - prompts
-    - versions
-    - skills
+- "Export All Data" button.
+- Downloads JSON:
 
-- Optional later:
-  - Import backup
+{
+  "schemaVersion": 1,
+  "exportedAt": timestamp,
+  "data": {
+    "prompts": [...],
+    "versions": [...],
+    "skills": [...]
+  }
+}
 
-No SKILL.md export.
-No directory reconstruction.
-No CLI integration.
+Filename format:
+prompt-vault-backup-YYYY-MM-DD.json
+
+## 5B — Import Backup
+
+- File picker (.json)
+- Validate:
+  - schemaVersion === 1
+  - prompts array
+  - versions array
+  - skills array
+- Confirm overwrite.
+- Replace in-memory state + localStorage.
+- Fail safely on invalid JSON.
 
 ---
 
-# Non-Goals
-
-The following are explicitly excluded:
+# Non-Goals (Explicitly Excluded)
 
 - Recursive GitHub import
-- SKILL.md preservation logic
-- File tree editing
-- Binary file handling
-- File size guardrails
-- Automated skill installation
+- SKILL.md directory reconstruction
+- Package manager behavior
+- CLI integration
+- Auto-install skills
 - Multi-user sync
-- Backend database (for now)
+- Supabase or backend database
+- Agent execution layer (future consideration)
 
 ---
 
-# Development Discipline
-
-- Execute phase-by-phase.
-- No architecture re-planning during execution.
-- Modify only declared files per phase.
-- Use CURRENT_TASK.md for bounded tasks.
-- Treat markdown specs as persistent memory.
-
----
-
-# Completion Definition
+# Definition of v1 Complete
 
 Prompt Vault v1 is complete when:
 
-- Prompt versioning is stable and trusted.
-- Skills can be added with runtime clarity.
+- Prompt versioning is stable and predictable.
+- Skills can be added, edited, categorized, and filtered.
 - Installation instructions are easily accessible.
-- Filtering reduces cognitive load.
-- The system feels organized and durable.
+- Data can be exported and restored safely.
+- The product feels organized and durable.
 
 Stability over novelty.
-Organization over automation.
 Clarity over complexity.
+Organization over automation.
