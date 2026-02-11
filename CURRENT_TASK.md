@@ -1,33 +1,19 @@
-# CURRENT TASK — Phase 1C: Consolidate Version Creation
+# CURRENT TASK — Phase 1D: Version History Must Show Snapshot Body
 
 ## Scope (modify only)
-- src/pages/Index.tsx
+- src/components/VersionHistoryDrawer.tsx
 
-## Goal
-There must be exactly ONE way to create a snapshot.
+## Bug
+Selecting a version shows its variables, but the body/diff is anchored to prompt.content (current), making old versions appear to change when the current body changes.
 
-## Required changes
+## Required behavior
+1) When a version is selected, the main body displayed in the right panel must come from selectedVersion.content.
+2) The diff view must NOT use prompt.content as the “new text” when a version is selected.
+   - Compare selectedVersion.content to the previous snapshot’s content (preferred), OR
+   - If comparing to current, label it clearly as “Compared to Current”, but the main displayed body still must be selectedVersion.content.
 
-1) Keep only ONE snapshot creation function:
-   - Use createVersionSnapshot(prompt, commitMessage)
+3) No other behavior changes.
 
-2) Remove ALL other direct snapshot constructions:
-   - Any inline `const snapshot: PromptVersionSnapshot = {...}`
-   - Any direct `setVersionSnapshots(prev => [snapshot, ...prev])`
-   - Any duplicate baseline creation logic
-
-3) ensureBaselineSnapshot may remain, but:
-   - It must ONLY create a baseline if none exists.
-   - It must NEVER create duplicates.
-
-4) Only handleSaveNewVersion is allowed to call createVersionSnapshot.
-   - No other function may create snapshots.
-
-5) handleSavePrompt must NEVER create snapshots.
-6) handleUpdateCurrent must NEVER create snapshots.
-7) handleRestoreVersion must NEVER create snapshots.
-
-## Done when
-- There is exactly one createVersionSnapshot call site.
-- Save New Version increments versions correctly.
-- No duplicate v1 can ever be created.
+## Done when (live app)
+- Clicking older versions shows the body as it existed in that version.
+- Changing the current prompt body does not retroactively change how older versions display.
