@@ -2,173 +2,193 @@
 
 ## Mission
 
-Prompt Vault is a human-centered instruction vault.
+Prompt Vault is an organizer for instruction assets.
 
-It is not an AI runtime.
-It is not an agent framework.
-It is not an LLM wrapper.
+It exists to help humans:
 
-It is a structured system for storing, organizing, versioning, and exporting high-quality AI instructions in a durable, file-native format.
+- Collect prompts they use as tools.
+- Curate external skills across ecosystems.
+- Understand what those skills do.
+- Track how to install and use them.
+- Maintain clarity in a rapidly evolving AI landscape.
 
-The goal is to give humans control over AI behavior through clear, reusable, portable instruction artifacts.
+Prompt Vault is not an execution environment.
+It is not a runtime.
+It is not a package manager.
+
+It is an instruction intelligence layer.
 
 ---
 
-## Core Philosophy
+# Core Philosophy
 
 AI tools change rapidly.
-Interfaces change.
-Agent ecosystems change.
-Models change.
+Agent ecosystems shift.
+Frameworks rise and fall.
 
-Clear instructions endure.
+Clear organization endures.
 
-Prompt Vault is built around the belief that:
+Prompt Vault is built on three principles:
 
-- Instructions are assets.
-- Structure increases reliability.
-- Versioning creates trust.
-- File-native storage creates portability.
-- Human clarity reduces AI drift.
+1. Instructions are assets.
+2. Organization creates leverage.
+3. Clarity reduces cognitive load.
 
----
-
-## What Prompt Vault Is
-
-Prompt Vault is:
-
-- A persistent repository for prompts.
-- A structured skill/package storage system.
-- A versioned instruction history system.
-- A SKILL.md-compatible package exporter.
-- A bridge between human thinking and AI execution.
+The product is designed to reduce chaos — not amplify it.
 
 ---
 
-## What Prompt Vault Is Not
-
-Prompt Vault is NOT:
-
-- An autonomous agent runner.
-- A model hosting platform.
-- A workflow automation engine.
-- A speculative AI experiment lab.
-- A constantly shifting architecture playground.
-
-It prioritizes stability over trend chasing.
-
----
-
-## Product Objectives
-
-1. Establish trustworthy version history.
-2. Prevent silent mutation of instruction history.
-3. Enable file-native SKILL.md-compatible packages.
-4. Preserve user-authored content exactly.
-5. Allow GitHub import of structured skills.
-6. Support clean export to external ecosystems.
-7. Maintain predictable, minimal behavior.
-
----
-
-## Design Principles
-
-### 1. Preserve First
-
-Imported files must remain unchanged.
-Unknown frontmatter keys must survive edits.
-User intent is never overwritten.
-
-### 2. Enforce Light
-
-On export:
-- Warn on spec violations.
-- Never hard-fail.
-- Never block user action.
-
-### 3. Immutability of History
-
-Snapshots must be immutable.
-Normal save must not create versions.
-Only explicit “Save New Version” creates a snapshot.
-v1 baseline must never be deleted.
-
-### 4. File-Based Memory
-
-Project state must persist in:
-- Markdown specs
-- Code
-- Git history
-
-Not in conversation context.
-
-### 5. Bounded Execution
-
-AI execution must:
-- Operate phase-by-phase.
-- Avoid repo-wide exploration.
-- Modify only declared files.
-- Avoid speculative architecture changes.
-
----
-
-## Architecture Direction
+# What Prompt Vault Is
 
 Prompt Vault consists of:
 
-1. Prompt system (existing)
-2. Versioning system (stabilized)
-3. Package system (SKILL.md-compatible)
-4. GitHub import pipeline
-5. Export utilities
+## 1. Prompt Organizer
 
-All systems must remain:
+- Store prompts you use as tools.
+- Version them.
+- Modify them.
+- Tag and categorize them.
+- Quickly copy them into LLMs.
+- Preserve prompt history with immutability guarantees.
 
-- Understandable
-- Deterministic
-- Inspectable
-- File-backed
+Prompts are personal working tools.
 
 ---
 
-## Long-Term Positioning
+## 2. Skill Registry (Metadata Layer)
 
-Prompt Vault is a durable instruction layer.
+Prompt Vault tracks external skills across ecosystems such as:
 
-As models evolve, Prompt Vault remains useful because:
+- Vercel
+- Opra
+- Claude Code
+- Other agent ecosystems
 
-- Structured instruction outlives model APIs.
-- SKILL.md compatibility enables ecosystem portability.
-- Versioning builds institutional memory.
-- Human-authored clarity reduces dependency on prompt optimization trends.
+For each skill, Prompt Vault stores:
+
+- Name
+- Ecosystem
+- Source URL
+- Description
+- What problem it solves
+- Required tools
+- Compatible runtimes
+- Installation instructions
+- Personal notes
+- Status (saved, tested, adopted, rejected)
+- Tags
+
+Prompt Vault does NOT:
+
+- Store full SKILL.md file trees.
+- Replicate GitHub repositories.
+- Reconstruct directory structures.
+- Act as a package manager.
+
+GitHub stores files.
+CLIs install skills.
+Prompt Vault organizes knowledge.
 
 ---
 
-## Development Discipline
+## 3. Future Layer — Agent Registry (Deferred)
 
-When using AI to develop this project:
+Agents may later be tracked similarly:
 
-- Planning must be written to markdown files.
-- Execution must occur phase-by-phase.
-- AI must not re-plan architecture unless explicitly requested.
-- AI must not explore the entire repo unless necessary.
-- Tasks must be bounded by file scope.
+- What they orchestrate
+- What skills they use
+- What environments they run in
+- How to deploy them
 
-The repository is the source of truth.
-Conversation is temporary scratch space.
+This is deferred until the skill registry is stable.
 
 ---
 
-## Success Criteria
+# Product Boundaries
+
+Prompt Vault will NOT:
+
+- Execute skills.
+- Install skills automatically.
+- Replace GitHub.
+- Replace CLI workflows.
+- Attempt to mirror external ecosystems.
+
+It focuses strictly on:
+
+Organization
+Clarity
+Tracking
+Reference
+
+---
+
+# Engineering Principles
+
+## 1. Immutability of Prompt History
+
+- Normal Save does not create a snapshot.
+- Only explicit "Save New Version" creates a snapshot.
+- Snapshots are immutable.
+- v1 baseline cannot be deleted.
+
+Trust in versioning is foundational.
+
+---
+
+## 2. Metadata Over File Replication
+
+Skills are stored as structured metadata records.
+
+Installation instructions are stored as text.
+File contents remain external.
+
+---
+
+## 3. Simplicity Over Infrastructure
+
+No backend required initially.
+No distributed storage required.
+Single-user local-first model.
+
+Cloud sync may be considered later.
+
+---
+
+## 4. Phase-Based Development
+
+Development must:
+
+- Be bounded by clearly defined tasks.
+- Avoid repo-wide exploration.
+- Avoid architecture re-planning during execution.
+- Treat markdown files as persistent project memory.
+
+---
+
+# Long-Term Positioning
+
+Prompt Vault becomes valuable when:
+
+- A user can quickly see all prompts they rely on.
+- A user can see all skills they have evaluated.
+- A user can understand compatibility across ecosystems.
+- A user can implement a skill quickly by referencing stored instructions.
+
+It reduces fragmentation across AI ecosystems.
+
+---
+
+# Success Criteria
 
 Prompt Vault is successful when:
 
-- Version history is predictable and trusted.
-- Packages import/export cleanly.
-- Unknown frontmatter survives edits.
-- Builds are stable.
-- The system feels durable, not experimental.
+- Prompt versioning is stable and predictable.
+- Skills can be easily added and reviewed.
+- Installation instructions are clear and accessible.
+- The system reduces decision friction.
+- The product feels organized, not experimental.
 
 Stability over novelty.
-Clarity over cleverness.
-Durability over trend alignment.
+Clarity over complexity.
+Organization over automation.
