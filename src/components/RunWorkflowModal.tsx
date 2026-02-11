@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Workflow, Skill, AIPrompt, ExecutionRun, generateId } from '../types';
+import { Workflow, Skill, AIPrompt, ExecutionRun, generateId, PLACEHOLDER_REGEX, canonicalKey } from '../types';
 import { X, Play, Loader2, CheckCircle, ArrowRight, Zap } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
@@ -72,12 +72,10 @@ export const RunWorkflowModal: React.FC<RunWorkflowModalProps> = ({
         let skillOutput = `\n### Step ${i + 1}: ${skill.name}\n`;
         
         skillPrompts.forEach((prompt, pIndex) => {
-          let processedContent = prompt.content;
-          Object.entries(inputValues).forEach(([key, value]) => {
-            processedContent = processedContent.replace(
-              new RegExp(`\\[${key}\\]`, 'g'),
-              value || `[${key}]`
-            );
+          // Use PLACEHOLDER_REGEX so both [KEY] and [KEY:hint] forms are replaced.
+          let processedContent = prompt.content.replace(PLACEHOLDER_REGEX, (full, rawKey) => {
+            const key = canonicalKey(rawKey);
+            return inputValues[key] || full;
           });
           
           skillOutput += `\n**Prompt ${pIndex + 1}:** ${prompt.title}\n`;

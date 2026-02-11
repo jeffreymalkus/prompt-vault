@@ -234,16 +234,17 @@ export const PromptCard: React.FC<PromptCardProps> = ({
           <Clock size={14} className="mr-1.5" />
           {new Date(prompt.createdAt).toLocaleDateString()}
         </div>
-        <button 
+        <button
           onClick={(e) => { e.stopPropagation(); onCopy(); }}
+          title="Copy raw template (variables are not substituted)"
           className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
-            isCopied 
-            ? 'bg-primary text-primary-foreground' 
+            isCopied
+            ? 'bg-primary text-primary-foreground'
             : 'bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95'
           }`}
         >
           {isCopied ? <Check size={16} /> : <Copy size={16} />}
-          {isCopied ? 'COPIED' : 'COPY'}
+          {isCopied ? 'COPIED' : 'COPY TEMPLATE'}
         </button>
       </div>
     </div>

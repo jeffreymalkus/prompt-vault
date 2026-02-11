@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Skill, AIPrompt, ExecutionRun, generateId } from '../types/index';
+import { Skill, AIPrompt, ExecutionRun, generateId, PLACEHOLDER_REGEX, canonicalKey } from '../types/index';
 import { X, Play, Zap, ArrowRight, Copy, Check, Layers } from 'lucide-react';
 
 interface RunSkillModalProps {
@@ -31,12 +31,12 @@ export const RunSkillModal: React.FC<RunSkillModalProps> = ({
   };
 
   const substituteVariables = (content: string): string => {
-    let result = content;
-    Object.entries(inputs).forEach(([key, value]) => {
-      const regex = new RegExp(`\\[${key.toUpperCase()}\\]`, 'g');
-      result = result.replace(regex, value);
+    // Use PLACEHOLDER_REGEX so both [KEY] and [KEY:hint] forms are replaced.
+    // Prompts may contain default-hint syntax like [TOPIC:your subject here].
+    return content.replace(PLACEHOLDER_REGEX, (full, rawKey) => {
+      const key = canonicalKey(rawKey);
+      return inputs[key.toUpperCase()] ?? full;
     });
-    return result;
   };
 
   const handleRun = async () => {
