@@ -1,25 +1,34 @@
-# Current Task — Phase 1: Versioning Invariants
+Phase 1A — Snapshot Creation vs Draft Save vs Restore
 
-## Scope
-
+Scope
 Modify only:
-
 - src/pages/Index.tsx
-- src/components/VersionHistoryDrawer.tsx
-- src/components/PromptModal.tsx (verify only)
 
-## Required Behavior
+Do NOT:
+- Modify any other files
+- Redesign architecture
+- Touch delete rules or commitMessage logic
+- Explore unrelated parts of the repo
 
-- Normal Save must NOT create a snapshot.
-- Only "Save New Version" creates a snapshot.
-- Restore must NOT create a snapshot.
-- Snapshots are immutable.
-- v1 baseline cannot be deleted.
-- commitMessage must remain exactly what the user typed.
+Objective
+Establish correct snapshot creation behavior.
 
-## Constraints
+Required Behavior
+1) Normal Save:
+   - Updates draft content + variables ONLY.
+   - MUST NOT create a snapshot/version.
 
-- Do not explore the entire repo.
-- Do not modify unrelated files.
-- Do not re-plan architecture.
-- Output unified diff only.
+2) Save New Version:
+   - The ONLY action that creates a snapshot/version.
+
+3) Restore This Version:
+   - MUST NOT create a snapshot/version.
+   - ONLY updates editor state (content + variables).
+
+Acceptance Criteria
+- Save → version count does not change.
+- Save New Version → version count increases by exactly 1.
+- Restore → editor updates, version count does not change.
+- No restore-triggered save loops.
+
+Output unified diff only.
