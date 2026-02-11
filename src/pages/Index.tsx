@@ -626,18 +626,23 @@ const Index: React.FC = () => {
       return 'duplicate-name';
     }
 
+    // Derive next version from existing snapshots
+    const existingVersions = versionSnapshots.filter(s => s.promptId === promptKey);
+    const maxVersion = existingVersions.length > 0 ? Math.max(...existingVersions.map(s => s.version)) : 0;
+    const nextVersion = maxVersion + 1;
+
     createVersionSnapshot(promptObj, trimmedName, {
       versionName: trimmedName,
       variableValues: varValues,
-      versionOverride: promptObj.version + 1,
+      versionOverride: nextVersion,
     });
-    
-    // Increment prompt version
-    setPrompts(prev => prev.map(p => 
-      p.id === promptObj.id ? { ...p, version: p.version + 1 } : p
+
+    // Update prompt version to match
+    setPrompts(prev => prev.map(p =>
+      p.id === promptObj.id ? { ...p, version: nextVersion } : p
     ));
     if (detailPrompt?.id === promptObj.id) {
-      setDetailPrompt(prev => prev ? { ...prev, version: prev.version + 1 } : prev);
+      setDetailPrompt(prev => prev ? { ...prev, version: nextVersion } : prev);
     }
     return null;
   };
