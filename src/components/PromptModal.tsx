@@ -29,6 +29,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   const [tags, setTags] = useState('');
   const [commitMessage, setCommitMessage] = useState('');
   const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
+  const [showVersionTitlePrompt, setShowVersionTitlePrompt] = useState(false);
+  const [versionTitle, setVersionTitle] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -43,6 +45,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
         setTags(prompt.tags.join(', '));
         setCommitMessage('');
         setIsCreatingNewFolder(false);
+        setShowVersionTitlePrompt(false);
+        setVersionTitle('');
       } else {
         setContent('');
         setTitle('');
@@ -54,6 +58,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
         setTags('');
         setCommitMessage('');
         setIsCreatingNewFolder(false);
+        setShowVersionTitlePrompt(false);
+        setVersionTitle('');
       }
     }
   }, [prompt, isOpen]);
@@ -246,6 +252,49 @@ export const PromptModal: React.FC<PromptModalProps> = ({
             </div>
           )}
 
+          {/* Version Title Prompt */}
+          {showVersionTitlePrompt && (
+            <div className="p-4 bg-muted/50 border border-border rounded-xl space-y-3 animate-in fade-in slide-in-from-top-1">
+              <label className="text-sm font-semibold text-foreground/80">Version title</label>
+              <input
+                autoFocus
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/50 outline-none text-sm"
+                placeholder="e.g. Added professional tone..."
+                value={versionTitle}
+                onChange={(e) => setVersionTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && versionTitle.trim()) {
+                    e.preventDefault();
+                    setCommitMessage(versionTitle.trim());
+                    setShowVersionTitlePrompt(false);
+                    handleSubmit(e as any, true);
+                  }
+                }}
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setShowVersionTitlePrompt(false); setVersionTitle(''); }}
+                  className="px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg font-bold text-xs text-muted-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!versionTitle.trim()}
+                  onClick={(e) => {
+                    setCommitMessage(versionTitle.trim());
+                    setShowVersionTitlePrompt(false);
+                    handleSubmit(e, true);
+                  }}
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg font-bold text-xs text-primary-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Save New Version
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="pt-6 border-t border-border flex gap-3">
             <button
               type="button"
@@ -258,10 +307,10 @@ export const PromptModal: React.FC<PromptModalProps> = ({
               {prompt && (
                 <button
                   type="button"
-                  onClick={(e) => handleSubmit(e, true)}
+                  onClick={() => { setShowVersionTitlePrompt(true); setVersionTitle(''); }}
                   className="flex-1 py-3 px-4 bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
                 >
-                  <Layers size={16} /> SAVE AS V{(prompt.version || 1) + 1}
+                  <Layers size={16} /> SAVE NEW VERSION
                 </button>
               )}
               <button
@@ -269,7 +318,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                 onClick={(e) => handleSubmit(e, false)}
                 className="flex-[2] py-3 px-4 bg-primary hover:bg-primary/90 rounded-xl font-bold text-sm text-primary-foreground shadow-indigo-glow transition-all active:scale-95"
               >
-                {prompt ? 'UPDATE CURRENT' : 'SAVE TO VAULT'}
+                {prompt ? 'SAVE' : 'SAVE TO VAULT'}
               </button>
             </div>
           </div>
