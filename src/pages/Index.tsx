@@ -593,7 +593,12 @@ const Index: React.FC = () => {
   };
 
   const handleDeleteVersion = (snapshotId: string) => {
-    setVersionSnapshots(prev => prev.filter(s => s.id !== snapshotId));
+    // Prevent deleting v1 baseline
+    setVersionSnapshots(prev => {
+      const target = prev.find(s => s.id === snapshotId);
+      if (target && target.version === 1) return prev;
+      return prev.filter(s => s.id !== snapshotId);
+    });
   };
 
   const handleSelectVersion = (snapshot: PromptVersionSnapshot) => {
