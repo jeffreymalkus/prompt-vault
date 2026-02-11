@@ -1,34 +1,38 @@
-Phase 1A — Snapshot Creation vs Draft Save vs Restore
+Phase 1B — Snapshot Immutability + Version Delete Rules
 
 Scope
 Modify only:
 - src/pages/Index.tsx
+- src/components/VersionHistoryDrawer.tsx
 
 Do NOT:
-- Modify any other files
-- Redesign architecture
-- Touch delete rules or commitMessage logic
-- Explore unrelated parts of the repo
+- Modify PromptModal.tsx
+- Change save vs restore logic
+- Redesign data model
+- Modify unrelated files
 
 Objective
-Establish correct snapshot creation behavior.
+Enforce snapshot immutability and correct version deletion rules.
 
 Required Behavior
-1) Normal Save:
-   - Updates draft content + variables ONLY.
-   - MUST NOT create a snapshot/version.
+1) Snapshots are immutable:
+   - Creating a new version must NOT mutate existing versions.
+   - Use deep copy when storing snapshot content/variables.
 
-2) Save New Version:
-   - The ONLY action that creates a snapshot/version.
+2) Version deletion rules:
+   - Prompt deletion (from list view) remains allowed.
+   - Inside Version History only:
+       - v1 baseline is NOT deletable.
+       - All later versions ARE deletable.
+       - User may delete all modifications and end with only v1.
 
-3) Restore This Version:
-   - MUST NOT create a snapshot/version.
-   - ONLY updates editor state (content + variables).
+3) Delete button in VersionHistoryDrawer:
+   - Must always be visible (no opacity-0 / group-hover-only).
+   - Disabled or hidden ONLY for v1 baseline.
 
 Acceptance Criteria
-- Save → version count does not change.
-- Save New Version → version count increases by exactly 1.
-- Restore → editor updates, version count does not change.
-- No restore-triggered save loops.
+- Create v2, v3 → delete v3, delete v2 → only v1 remains.
+- v1 cannot be deleted inside version history.
+- Creating a new version does not change older version data.
 
 Output unified diff only.
