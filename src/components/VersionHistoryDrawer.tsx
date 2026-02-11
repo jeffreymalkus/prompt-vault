@@ -193,24 +193,38 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                   </div>
                 </div>
                 <ScrollArea className="flex-1 p-4">
+                  {/* Snapshot Body */}
                   <Card className="border-border">
                     <CardContent className="p-4">
-                      <div className="flex items-center gap-4 mb-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-3 h-3 rounded-full bg-green-500/30 border border-green-500" />
-                          <span className="text-[10px] font-bold text-muted-foreground">ADDED</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-3 h-3 rounded-full bg-red-500/30 border border-red-500" />
-                          <span className="text-[10px] font-bold text-muted-foreground">REMOVED</span>
-                        </div>
-                      </div>
-                      <DiffView
-                        oldText={selectedVersion.content}
-                        newText={prompt.content}
-                      />
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-3">Snapshot Body</span>
+                      <pre className="text-sm font-mono whitespace-pre-wrap leading-relaxed p-4 bg-background rounded-xl border border-border">
+                        {selectedVersion.content}
+                      </pre>
                     </CardContent>
                   </Card>
+
+                  {/* Diff compared to current */}
+                  {selectedVersion.content !== prompt.content && (
+                    <Card className="border-border mt-3">
+                      <CardContent className="p-4">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-3">Compared to Current</span>
+                        <div className="flex items-center gap-4 mb-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 rounded-full bg-green-500/30 border border-green-500" />
+                            <span className="text-[10px] font-bold text-muted-foreground">ADDED</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 rounded-full bg-red-500/30 border border-red-500" />
+                            <span className="text-[10px] font-bold text-muted-foreground">REMOVED</span>
+                          </div>
+                        </div>
+                        <DiffView
+                          oldText={selectedVersion.content}
+                          newText={prompt.content}
+                        />
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Saved Variable Values */}
                   {selectedVersion.variableValues && Object.keys(selectedVersion.variableValues).length > 0 && (
