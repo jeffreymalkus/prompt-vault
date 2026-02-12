@@ -29,6 +29,8 @@ import { AgentModal } from '../components/AgentModal';
 import { AgentImportModal } from '../components/AgentImportModal';
 import { SmartImportModal } from '../components/SmartImportModal';
 import { CollectSkillModal } from '../components/CollectSkillModal';
+import { SystemSettingsModal } from '../components/SystemSettingsModal';
+import { createBackup, BackupData } from '../utils/backup';
 import { PromptDetailModal } from '../components/PromptDetailModal';
 import { VersionHistoryDrawer } from '../components/VersionHistoryDrawer';
 import { NavigationTabs } from '../components/NavigationTabs';
@@ -57,7 +59,8 @@ import {
   X,
   GitBranch,
   Bot,
-  Wand2
+  Wand2,
+  Settings
 } from 'lucide-react';
 
 // Robust CSV line parser that handles quoted fields with commas
@@ -164,6 +167,7 @@ const Index: React.FC = () => {
   // SMART IMPORT & DETAIL
   const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
   const [smartImportDefaultMode, setSmartImportDefaultMode] = useState<'prompt' | 'skill'>('prompt');
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [detailPrompt, setDetailPrompt] = useState<AIPrompt | undefined>(undefined);
   const [skillPrefill, setSkillPrefill] = useState<Partial<Skill> | undefined>(undefined);
 
@@ -1002,6 +1006,54 @@ const Index: React.FC = () => {
     setIsAgentModalOpen(true);
   };
 
+  // BACKUP & RESTORE HANDLERS
+  const handleExportBackup = () => {
+    const data: BackupData = {
+      prompts,
+      folders: customFolders,
+      skills,
+      workflows,
+      agents,
+      history: executionHistory,
+      snapshots: versionSnapshots,
+    };
+
+    const jsonString = createBackup(data);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `prompt-vault-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportBackup = (data: BackupData) => {
+    // Synchronously save to local storage to ensure persistence before reload
+    localStorage.setItem('prompt_vault_data_v2', JSON.stringify(data.prompts || []));
+    localStorage.setItem('prompt_vault_folders', JSON.stringify(data.folders || []));
+    localStorage.setItem('prompt_vault_skills', JSON.stringify(data.skills || []));
+    localStorage.setItem('prompt_vault_workflows', JSON.stringify(data.workflows || []));
+    localStorage.setItem('prompt_vault_agents', JSON.stringify(data.agents || []));
+    localStorage.setItem('prompt_vault_execution_history', JSON.stringify(data.history || []));
+    localStorage.setItem('prompt_vault_version_snapshots', JSON.stringify(data.snapshots || []));
+
+    // Reload to reset all application state and ensure a clean slate
+    window.location.reload();
+  };
+
+  const handleClearAllData = () => {
+    setPrompts([]);
+    setCustomFolders(['Core Frameworks', 'Development', 'Professional', 'Marketing', 'Education', 'Creative', 'General']);
+    setSkills([]);
+    setWorkflows([]);
+    setAgents([]);
+    setExecutionHistory([]);
+    setVersionSnapshots([]);
+    localStorage.clear();
+    location.reload(); // Reload to clear any lingering state/caches
+  };
+
   // Navigation handlers
   const handleFolderSelect = (folder: string) => {
     setActiveFolder(folder);
@@ -1192,8 +1244,19 @@ const Index: React.FC = () => {
             ))}
           </div>
         </div>
-      </nav>
-    </div>
+
+        {/* Settings Footer */}
+        <div className="pt-6 mt-auto border-t border-border">
+          <button
+            onClick={() => { setIsSettingsModalOpen(true); setMobileSidebarOpen(false); }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-foreground/60 hover:text-foreground hover:bg-muted rounded-lg text-sm font-medium transition-all"
+          >
+            <Settings size={18} />
+            System Settings
+          </button>
+        </div>
+      </nav >
+    </div >
   );
 
   return (
@@ -1608,6 +1671,14 @@ const Index: React.FC = () => {
       </main>
 
       {/* Modals */}
+      <SystemSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onExportBackup={handleExportBackup}
+        onImportBackup={handleImportBackup}
+        onClearAllData={handleClearAllData}
+      />
+
       <PromptModal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setEditingPrompt(undefined); }}

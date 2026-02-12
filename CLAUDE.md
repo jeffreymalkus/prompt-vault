@@ -56,3 +56,11 @@ This project uses a tag-team model between **Antigravity (IDE/Architect)** and *
 # Versioning System Rules
 - Only “Save New Version” creates snapshots.
 - Restore must not create snapshots.
+
+---
+
+# Development Commands
+- Install dependencies: `bun install`
+- Start dev server: `bun dev`
+- Build for production: `bun run build`
+- Run tests: `bun test`
