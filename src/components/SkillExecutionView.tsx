@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Skill, ExecutionRun, generateId, SkillPlaybook, SkillArchetype } from '../types/index';
-import { Play, Copy, Check, Terminal, Variable, AlertCircle, ExternalLink, Bookmark, FileText, Zap, ListChecks } from 'lucide-react';
+import { Skill, AIPrompt, ExecutionRun, generateId, SkillPlaybook, SkillArchetype } from '../types/index';
+import { Play, Copy, Check, Terminal, Variable, AlertCircle, ExternalLink, Bookmark, FileText, Zap, ListChecks, ArrowLeft, Edit3 } from 'lucide-react';
 
 interface SkillExecutionViewProps {
     skill: Skill;
+    prompts?: AIPrompt[];
+    onBack?: () => void;
+    onEdit?: () => void;
     onRunComplete: (run: ExecutionRun) => void;
 }
 
-export const SkillExecutionView: React.FC<SkillExecutionViewProps> = ({ skill, onRunComplete }) => {
+export const SkillExecutionView: React.FC<SkillExecutionViewProps> = ({ skill, prompts, onBack, onEdit, onRunComplete }) => {
     const [inputs, setInputs] = useState<Record<string, string>>({});
+
     const [output, setOutput] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -87,14 +91,34 @@ export const SkillExecutionView: React.FC<SkillExecutionViewProps> = ({ skill, o
 
     return (
         <div className="flex flex-col h-full bg-background">
+            {/* Navigation Header */}
+            {(onBack || onEdit) && (
+                <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-muted/10">
+                    <div className="flex items-center gap-3">
+                        {onBack && (
+                            <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                                <ArrowLeft size={16} />
+                                Back
+                            </button>
+                        )}
+                        <span className="text-sm font-semibold text-foreground">{skill.name}</span>
+                    </div>
+                    {onEdit && (
+                        <button onClick={onEdit} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-muted text-foreground/70 hover:bg-muted/80 transition-all">
+                            <Edit3 size={12} />
+                            EDIT SKILL
+                        </button>
+                    )}
+                </div>
+            )}
             <div className="flex-1 flex overflow-hidden">
                 {/* Left Panel: Source / Instructions */}
                 <div className="w-1/2 border-r border-border flex flex-col">
                     <div className="p-4 border-b border-border bg-muted/20 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <span className={`p-1.5 rounded-md ${playbook === SkillPlaybook.IMPLEMENTATION_RESOURCE ? 'bg-blue-500/10 text-blue-500' :
-                                    playbook === SkillPlaybook.RUN_IN_CHAT ? 'bg-purple-500/10 text-purple-500' :
-                                        'bg-orange-500/10 text-orange-500'
+                                playbook === SkillPlaybook.RUN_IN_CHAT ? 'bg-purple-500/10 text-purple-500' :
+                                    'bg-orange-500/10 text-orange-500'
                                 }`}>
                                 {playbook === SkillPlaybook.IMPLEMENTATION_RESOURCE && <Bookmark size={14} />}
                                 {playbook === SkillPlaybook.RUN_IN_CHAT && <Zap size={14} />}
@@ -180,8 +204,8 @@ export const SkillExecutionView: React.FC<SkillExecutionViewProps> = ({ skill, o
                                     setTimeout(() => setCopied(false), 2000);
                                 }}
                                 className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 ${copied
-                                        ? 'bg-green-600 text-white shadow-green-500/20'
-                                        : 'bg-zinc-800 hover:bg-zinc-700 text-white shadow-xl'
+                                    ? 'bg-green-600 text-white shadow-green-500/20'
+                                    : 'bg-zinc-800 hover:bg-zinc-700 text-white shadow-xl'
                                     }`}
                             >
                                 {copied ? <Check size={18} /> : <Copy size={18} />}
@@ -254,8 +278,8 @@ export const SkillExecutionView: React.FC<SkillExecutionViewProps> = ({ skill, o
                                 onClick={handleRun}
                                 disabled={isRunning}
                                 className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 mt-auto ${isRunning
-                                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                                        : 'bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-primary-foreground hover:shadow-primary/25'
+                                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-primary-foreground hover:shadow-primary/25'
                                     }`}
                             >
                                 {isRunning ? (

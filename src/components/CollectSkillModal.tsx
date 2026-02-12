@@ -124,6 +124,7 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
 
     // Use the latest analysis result
     const result = detectArchetype(sourceMarkdown);
+    setParseResult(result);
 
     setName(result.title);
     setDescription(result.description);
@@ -133,6 +134,12 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
 
     if (result.resourceUrl) {
       setSourceUrl(result.resourceUrl);
+    }
+
+    // For URL-based resources, replace the raw URL in sourceMarkdown
+    // with synthesized content so the execution view shows clean metadata
+    if (result.playbook === SkillPlaybook.IMPLEMENTATION_RESOURCE && result.resourceUrl) {
+      setSourceMarkdown(result.description);
     }
 
     setStep('metadata');
@@ -154,8 +161,13 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
     e.preventDefault();
     const now = Date.now();
 
-    // Final provenance check (re-run to ensure fresh timestamp/logic if text changed)
-    const finalParse = detectArchetype(sourceMarkdown);
+    // Use stored parseResult provenance, or re-detect for fresh timestamp
+    const provenance = parseResult?.provenance || detectArchetype(sourceMarkdown).provenance;
+
+    // For IMPLEMENTATION_RESOURCE, store the synthesized description as
+    // sourceMarkdown (clean content for rendering) and set procedure
+    const isResource = playbook === SkillPlaybook.IMPLEMENTATION_RESOURCE;
+    const finalSourceMarkdown = isResource ? description : sourceMarkdown;
 
     const savedSkill: Skill = {
       id: skill?.id || generateId(),
@@ -176,17 +188,18 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
       isPinned: skill?.isPinned || false,
       // Collection fields
       sourceType: 'collected',
-      sourceMarkdown,
+      sourceMarkdown: finalSourceMarkdown,
       sourceUrl: sourceUrl || undefined,
       sourceEcosystem,
       deploymentStatus,
       lastDeployedAt: skill?.lastDeployedAt,
       deploymentTarget: deploymentTarget || undefined,
+      procedure: isResource ? description : undefined,
 
       // PROJECT RESET FIELDS
       archetype,
       playbook,
-      provenance: finalParse.provenance,
+      provenance,
       resourceUrl: sourceUrl || undefined
     };
     onSave(savedSkill);
