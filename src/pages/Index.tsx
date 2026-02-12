@@ -1,21 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import {
-  AIPrompt,
-  Skill,
-  Workflow,
-  Agent,
+import { 
+  AIPrompt, 
+  Skill, 
+  Workflow, 
+  Agent, 
   ExecutionRun,
   PromptVersionSnapshot,
-  DEFAULT_CATEGORIES,
-  ViewMode,
-  ActiveSection,
+  DEFAULT_CATEGORIES, 
+  ViewMode, 
+  ActiveSection, 
   NavigationView,
-  generateId,
-  DeploymentStatus,
-  SkillArchetype,
-  SkillPlaybook
+  generateId 
 } from '../types';
-import { CANONICAL_SEED_PROMPTS, mergeWithCanonicalSeeds, isCanonicalSeed } from '../data/canonicalSeedPrompts';
 import { PromptCard } from '../components/PromptCard';
 import { PromptModal } from '../components/PromptModal';
 import { SkillCard } from '../components/SkillCard';
@@ -30,15 +26,17 @@ import { AgentCard } from '../components/AgentCard';
 import { AgentModal } from '../components/AgentModal';
 import { AgentImportModal } from '../components/AgentImportModal';
 import { SmartImportModal } from '../components/SmartImportModal';
-import { CollectSkillModal } from '../components/CollectSkillModal';
-import { SkillExecutionView } from '../components/SkillExecutionView';
-import { SystemSettingsModal } from '../components/SystemSettingsModal';
-import { createBackup, BackupData } from '../utils/backup';
 import { PromptDetailModal } from '../components/PromptDetailModal';
 import { VersionHistoryDrawer } from '../components/VersionHistoryDrawer';
 import { NavigationTabs } from '../components/NavigationTabs';
 import { CapabilityView } from '../components/CapabilityView';
 import { ExecutionHistory } from '../components/ExecutionHistory';
+import {
+  buildBackupFromState,
+  downloadBackup,
+  validateBackup,
+  restoreBackupToState,
+} from '../utils/backup';
 import {
   Search,
   Plus,
@@ -63,7 +61,9 @@ import {
   GitBranch,
   Bot,
   Wand2,
-  Settings
+  HardDrive,
+  UploadCloud,
+  Archive
 } from 'lucide-react';
 
 // Robust CSV line parser that handles quoted fields with commas
@@ -71,11 +71,11 @@ function parseCSVLine(line: string): string[] {
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
-
+  
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     const nextChar = line[i + 1];
-
+    
     if (char === '"') {
       if (inQuotes && nextChar === '"') {
         current += '"';
@@ -98,12 +98,12 @@ function parseCSVLine(line: string): string[] {
 function parseCSV(text: string): Partial<AIPrompt>[] {
   const lines = text.split(/\r?\n/);
   const result: Partial<AIPrompt>[] = [];
-
+  
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue;
-
+    
     const row = parseCSVLine(lines[i]);
-
+    
     if (row && row.length >= 10) {
       const clean = (t: string | undefined) => t ? t.replace(/^"|"$/g, '').replace(/""/g, '"').trim() : '';
       result.push({
@@ -135,46 +135,42 @@ const Index: React.FC = () => {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
+  const [backupAlert, setBackupAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // NEW CAPABILITY LAYERS STATE
   const [skills, setSkills] = useState<Skill[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [executionHistory, setExecutionHistory] = useState<ExecutionRun[]>([]);
-  const [executionSkillId, setExecutionSkillId] = useState<string | undefined>(undefined);
-
+  
   // NAVIGATION STATE
   const [activeSection, setActiveSection] = useState<ActiveSection>('prompts');
   const [navigationView, setNavigationView] = useState<NavigationView>('object');
-
+  
   // SKILL MODALS
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
   const [isSkillImportModalOpen, setIsSkillImportModalOpen] = useState(false);
-  const [isCollectSkillModalOpen, setIsCollectSkillModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | undefined>(undefined);
-  const [editingCollectedSkill, setEditingCollectedSkill] = useState<Skill | undefined>(undefined);
   const [runningSkill, setRunningSkill] = useState<Skill | undefined>(undefined);
-  const [showSkillMenu, setShowSkillMenu] = useState(false);
-  const [deploymentStatusFilter, setDeploymentStatusFilter] = useState<DeploymentStatus | 'all'>('all');
-
+  
   // WORKFLOW MODALS
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
   const [isWorkflowImportModalOpen, setIsWorkflowImportModalOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | undefined>(undefined);
   const [runningWorkflow, setRunningWorkflow] = useState<Workflow | undefined>(undefined);
-
+  
   // AGENT MODALS
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
   const [isAgentImportModalOpen, setIsAgentImportModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | undefined>(undefined);
-
+  
   // SMART IMPORT & DETAIL
   const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
   const [smartImportDefaultMode, setSmartImportDefaultMode] = useState<'prompt' | 'skill'>('prompt');
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [detailPrompt, setDetailPrompt] = useState<AIPrompt | undefined>(undefined);
   const [skillPrefill, setSkillPrefill] = useState<Partial<Skill> | undefined>(undefined);
-
+  
   // VERSION HISTORY
   const [versionSnapshots, setVersionSnapshots] = useState<PromptVersionSnapshot[]>([]);
   const [historyPrompt, setHistoryPrompt] = useState<AIPrompt | undefined>(undefined);
@@ -189,18 +185,53 @@ const Index: React.FC = () => {
     const savedAgents = localStorage.getItem('prompt_vault_agents');
     const savedHistory = localStorage.getItem('prompt_vault_execution_history');
     const savedSnapshots = localStorage.getItem('prompt_vault_version_snapshots');
-
-    {
-      let userPrompts: AIPrompt[] = [];
-      if (savedPrompts) {
-        try {
-          userPrompts = JSON.parse(savedPrompts);
-        } catch (e) {
-          console.error('Failed to load prompts', e);
-        }
+    
+    if (savedPrompts) {
+      try {
+        setPrompts(JSON.parse(savedPrompts));
+      } catch (e) {
+        console.error('Failed to load prompts', e);
       }
-      // Always merge canonical seeds with whatever user prompts exist
-      setPrompts(mergeWithCanonicalSeeds(userPrompts));
+    } else {
+      const now = Date.now();
+      const initial: AIPrompt[] = [
+        {
+          id: '1',
+          title: 'Expert Persona Framework',
+          content: 'Act as an expert [ROLE] with 20 years of experience in [INDUSTRY]. Your goal is to [GOAL]. Use professional language and provide deep, nuanced insights.',
+          description: 'The standard for high-quality persona generation.',
+          notes: 'Uses persona adoption and industry anchoring to reduce generic responses.',
+          category: 'Analysis',
+          tags: ['persona', 'expert'],
+          folder: 'Core Frameworks',
+          type: 'system',
+          version: 1,
+          createdAt: now - 1000,
+          lastUsedAt: now,
+          usageCount: 15,
+          isPinned: true,
+          variables: ['ROLE', 'INDUSTRY', 'GOAL']
+        },
+        {
+          id: '2',
+          title: 'Step-by-Step Reasoning (CoT)',
+          content: 'Solve the following: [PROBLEM]. Before answering, think through the solution step-by-step. Show your logical work for each transition.',
+          description: 'Uses Chain-of-Thought to increase accuracy.',
+          notes: 'Critical for mathematical or complex logic tasks.',
+          category: 'Analysis',
+          tags: ['logic', 'reasoning'],
+          folder: 'Core Frameworks',
+          type: 'user',
+          version: 1,
+          createdAt: now - 2000,
+          lastUsedAt: now,
+          usageCount: 8,
+          isPinned: false,
+          variables: ['PROBLEM']
+        }
+      ];
+      setPrompts(initial);
+      localStorage.setItem('prompt_vault_data_v2', JSON.stringify(initial));
     }
 
     if (savedFolders) {
@@ -213,19 +244,10 @@ const Index: React.FC = () => {
       setCustomFolders(['Core Frameworks', 'Development', 'Professional', 'Marketing', 'Education', 'Creative', 'General']);
     }
 
-    // Load skills (with migration for collection fields)
+    // Load skills
     if (savedSkills) {
       try {
-        const parsed: Skill[] = JSON.parse(savedSkills);
-        setSkills(parsed.map(s => ({
-          ...s,
-          sourceType: s.sourceType || 'composed',
-          deploymentStatus: s.deploymentStatus || 'deployed',
-          // Legacy migration: default archetype/playbook for pre-deterministic-engine skills
-          archetype: s.archetype || (s.sourceType === 'collected' ? SkillArchetype.PROMPT_TEXT : SkillArchetype.SKILL_MARKDOWN),
-          playbook: s.playbook || (s.sourceType === 'collected' ? SkillPlaybook.RUN_IN_CHAT : SkillPlaybook.RUN_IN_APP),
-          provenance: s.provenance || { domain: 'legacy', detectedKind: s.archetype || SkillArchetype.PROMPT_TEXT, importedAtISO: new Date().toISOString(), confidence: 0 },
-        })));
+        setSkills(JSON.parse(savedSkills));
       } catch (e) {
         console.error('Failed to load skills', e);
       }
@@ -269,10 +291,8 @@ const Index: React.FC = () => {
   }, []);
 
   // Persist data
-  // Persist only user (non-canonical) prompts to localStorage
   useEffect(() => {
-    const userOnly = prompts.filter(p => !isCanonicalSeed(p.id));
-    localStorage.setItem('prompt_vault_data_v2', JSON.stringify(userOnly));
+    localStorage.setItem('prompt_vault_data_v2', JSON.stringify(prompts));
   }, [prompts]);
 
   useEffect(() => {
@@ -340,7 +360,7 @@ const Index: React.FC = () => {
 
   const filteredPrompts = useMemo(() => {
     return latestPrompts.filter(p => {
-      const matchesSearch =
+      const matchesSearch = 
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.notes && p.notes.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -353,20 +373,19 @@ const Index: React.FC = () => {
 
   const filteredSkills = useMemo(() => {
     return skills.filter(s => {
-      const matchesSearch =
+      const matchesSearch = 
         s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesCategory = activeCategory === 'All' || s.category === activeCategory;
       const matchesFolder = activeFolder === 'All' || s.folder === activeFolder;
-      const matchesStatus = deploymentStatusFilter === 'all' || s.deploymentStatus === deploymentStatusFilter;
-      return matchesSearch && matchesCategory && matchesFolder && matchesStatus;
+      return matchesSearch && matchesCategory && matchesFolder;
     }).sort((a, b) => b.createdAt - a.createdAt);
-  }, [skills, searchQuery, activeCategory, activeFolder, deploymentStatusFilter]);
+  }, [skills, searchQuery, activeCategory, activeFolder]);
 
   const filteredWorkflows = useMemo(() => {
     return workflows.filter(w => {
-      const matchesSearch =
+      const matchesSearch = 
         w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         w.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         w.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -378,7 +397,7 @@ const Index: React.FC = () => {
 
   const filteredAgents = useMemo(() => {
     return agents.filter(a => {
-      const matchesSearch =
+      const matchesSearch = 
         a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         a.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         a.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -389,13 +408,9 @@ const Index: React.FC = () => {
   }, [agents, searchQuery, activeCategory, activeFolder]);
 
   // PROMPT HANDLERS
-  const handleUpdatePrompt = (updatedPrompt: AIPrompt) => {
-    setPrompts(prev => prev.map(p => p.id === updatedPrompt.id ? updatedPrompt : p));
-  };
-
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(prompts, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const exportFileDefaultName = `prompt-vault-export-${new Date().toISOString().split('T')[0]}.json`;
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
@@ -418,7 +433,7 @@ const Index: React.FC = () => {
       `"${p.tags.join(', ')}"`,
       `"${p.content.replace(/"/g, '""')}"`
     ]);
-
+    
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -463,7 +478,6 @@ const Index: React.FC = () => {
             category: p.category || 'Creative',
             folder: p.folder || 'General',
             type: p.type || 'user',
-            origin: 'user',
             version: 1,
             tags: p.tags || [],
             createdAt: Date.now() + index,
@@ -487,55 +501,101 @@ const Index: React.FC = () => {
       const existingSignatures = new Set(
         prev.map(p => `${p.type}|${p.folder}|${p.title}|${p.content}`)
       );
-
+      
       const filtered = newPrompts.filter(p => {
         const signature = `${p.type}|${p.folder}|${p.title}|${p.content}`;
         return !existingSignatures.has(signature);
       });
-
+      
       const duplicateCount = newPrompts.length - filtered.length;
       const newFolders = Array.from(new Set(newPrompts.map(p => p.folder)));
       setCustomFolders(prevFolders => Array.from(new Set([...prevFolders, ...newFolders])));
-
+      
       if (filtered.length === 0) {
         alert('All prompts in the file already exist (duplicates were skipped).');
         return prev;
       }
-
+      
       if (duplicateCount > 0) {
         alert(`Imported ${filtered.length} new prompts. ${duplicateCount} duplicate(s) skipped.`);
       } else {
         alert(`Imported ${filtered.length} new prompts.`);
       }
-
+      
       return [...filtered, ...prev];
     });
   };
 
-  const ensureBaselineSnapshot = (prompt: AIPrompt) => {
-    const key = prompt.parentId || prompt.id;
-    setVersionSnapshots(prev => {
-      const existing = prev.filter(s => s.promptId === key);
-      if (existing.length > 0) return prev;
-      const baseline: PromptVersionSnapshot = {
-        id: generateId(),
-        promptId: key,
-        content: prompt.content,
-        title: prompt.title,
-        description: prompt.description,
-        tags: [...prompt.tags],
-        category: prompt.category,
-        folder: prompt.folder,
-        commitMessage: 'Initial Version',
-        createdAt: Date.now() - 1,
-        version: 1,
-        variableValues: {},
-      };
-      return [...prev, baseline];
+  // ---- BACKUP & RESTORE (Phase 5) ----
+
+  const handleExportBackup = () => {
+    const backup = buildBackupFromState({
+      skills,
+      prompts,
+      versions: versionSnapshots,
     });
+    downloadBackup(backup);
+    setBackupAlert({ type: 'success', message: `Backup exported: ${skills.length} skills, ${prompts.length} prompts, ${versionSnapshots.length} versions.` });
+    setTimeout(() => setBackupAlert(null), 4000);
   };
 
-  const createVersionSnapshot = (prompt: AIPrompt, commitMessage: string = '', opts?: { versionName?: string; variableValues?: Record<string, string>; versionOverride?: number }) => {
+  const handleImportBackupClick = () => {
+    backupFileInputRef.current?.click();
+  };
+
+  const handleBackupFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      try {
+        const raw = JSON.parse(content);
+        const result = validateBackup(raw);
+        if (!result.valid) {
+          setBackupAlert({ type: 'error', message: result.error });
+          setTimeout(() => setBackupAlert(null), 5000);
+          return;
+        }
+
+        const { nextState, report } = restoreBackupToState(
+          result.backup,
+          { skills, prompts, versions: versionSnapshots },
+          'merge'
+        );
+
+        setSkills(nextState.skills);
+        setPrompts(nextState.prompts);
+        setVersionSnapshots(nextState.versions);
+
+        // Sync folders from imported prompts & skills
+        const allFolders = [
+          ...nextState.prompts.map(p => p.folder),
+          ...nextState.skills.map(s => s.folder),
+        ];
+        const uniqueImportedFolders = Array.from(new Set(allFolders.filter(Boolean)));
+        setCustomFolders(prev => Array.from(new Set([...prev, ...uniqueImportedFolders])));
+
+        const parts: string[] = [];
+        const sk = report.skills.added + report.skills.replaced;
+        const pr = report.prompts.added + report.prompts.replaced;
+        const vr = report.versions.added + report.versions.replaced;
+        parts.push(`${sk} skill${sk !== 1 ? 's' : ''}`);
+        parts.push(`${pr} prompt${pr !== 1 ? 's' : ''}`);
+        parts.push(`${vr} version${vr !== 1 ? 's' : ''}`);
+        setBackupAlert({ type: 'success', message: `Imported ${parts.join(', ')}.` });
+        setTimeout(() => setBackupAlert(null), 5000);
+      } catch (err) {
+        setBackupAlert({ type: 'error', message: 'Error parsing backup file. Ensure it is valid JSON.' });
+        setTimeout(() => setBackupAlert(null), 5000);
+      }
+      if (backupFileInputRef.current) backupFileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
+
+  const createVersionSnapshot = (prompt: AIPrompt, commitMessage: string = '') => {
     const snapshot: PromptVersionSnapshot = {
       id: generateId(),
       promptId: prompt.parentId || prompt.id,
@@ -546,19 +606,22 @@ const Index: React.FC = () => {
       category: prompt.category,
       folder: prompt.folder,
       commitMessage,
-      versionName: opts?.versionName,
       createdAt: Date.now(),
-      version: opts?.versionOverride ?? prompt.version,
-      variableValues: opts?.variableValues ? { ...opts.variableValues } : undefined,
+      version: prompt.version,
     };
     setVersionSnapshots(prev => [snapshot, ...prev]);
   };
 
   const handleSavePrompt = (data: Partial<AIPrompt>, saveAsNewVersion: boolean, commitMessage?: string) => {
     if (editingPrompt && !saveAsNewVersion) {
-      // Normal Save: update draft only, do NOT create a snapshot
+      // Snapshot current state before overwriting
+      createVersionSnapshot(editingPrompt, commitMessage || 'Updated prompt');
       setPrompts(prev => prev.map(p => p.id === editingPrompt.id ? { ...p, ...data } as AIPrompt : p));
     } else {
+      if (editingPrompt) {
+        // Snapshot old version before creating new
+        createVersionSnapshot(editingPrompt, commitMessage || `Saved as v${data.version || 1}`);
+      }
       const newPrompt: AIPrompt = {
         id: generateId(),
         title: data.title || 'Untitled',
@@ -568,7 +631,6 @@ const Index: React.FC = () => {
         category: data.category || 'Creative',
         folder: data.folder || 'General',
         type: data.type || 'user',
-        origin: 'user',
         version: data.version || 1,
         tags: data.tags || [],
         createdAt: Date.now(),
@@ -579,7 +641,7 @@ const Index: React.FC = () => {
         parentId: data.parentId
       };
       setPrompts(prev => [newPrompt, ...prev]);
-
+      
       if (data.folder && !customFolders.includes(data.folder) && data.folder !== 'General') {
         setCustomFolders(prev => [...prev, data.folder!]);
       }
@@ -591,16 +653,19 @@ const Index: React.FC = () => {
   const handleRestoreVersion = (snapshot: PromptVersionSnapshot) => {
     const currentPrompt = prompts.find(p => (p.parentId || p.id) === snapshot.promptId);
     if (!currentPrompt) return;
-
-    // RESTORE ONLY: update editor state, do NOT create any snapshot
-    setPrompts(prev => prev.map(p =>
-      p.id === currentPrompt.id
-        ? { ...p, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder }
+    
+    // Snapshot current state before restoring
+    createVersionSnapshot(currentPrompt, 'Before restore');
+    
+    // Update prompt with restored content
+    setPrompts(prev => prev.map(p => 
+      p.id === currentPrompt.id 
+        ? { ...p, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder, version: p.version + 1 }
         : p
     ));
-
+    
     // Update detail view if open
-    const updated = { ...currentPrompt, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder };
+    const updated = { ...currentPrompt, content: snapshot.content, title: snapshot.title, description: snapshot.description, tags: [...snapshot.tags], category: snapshot.category, folder: snapshot.folder, version: currentPrompt.version + 1 };
     if (detailPrompt?.id === currentPrompt.id) {
       setDetailPrompt(updated);
     }
@@ -615,12 +680,7 @@ const Index: React.FC = () => {
   };
 
   const handleDeleteVersion = (snapshotId: string) => {
-    // Prevent deleting v1 baseline
-    setVersionSnapshots(prev => {
-      const target = prev.find(s => s.id === snapshotId);
-      if (target && target.version === 1) return prev;
-      return prev.filter(s => s.id !== snapshotId);
-    });
+    setVersionSnapshots(prev => prev.filter(s => s.id !== snapshotId));
   };
 
   const handleSelectVersion = (snapshot: PromptVersionSnapshot) => {
@@ -629,95 +689,72 @@ const Index: React.FC = () => {
   };
 
   const handleUpdateCurrent = (promptObj: AIPrompt, varValues: Record<string, string>) => {
-    // Normal Save: update draft content + variables ONLY, do NOT create a snapshot
-    setPrompts(prev => prev.map(p =>
-      p.id === promptObj.id
-        ? { ...p, content: promptObj.content, title: promptObj.title, description: promptObj.description, tags: [...promptObj.tags], category: promptObj.category, folder: promptObj.folder, variables: promptObj.variables || [] }
-        : p
-    ));
+    // Snapshot current state, then update with current var values saved
+    createVersionSnapshot(promptObj, 'Updated current');
+    // Save variable values into the latest snapshot
+    setVersionSnapshots(prev => {
+      const latest = prev[0];
+      if (latest) {
+        return [{ ...latest, variableValues: varValues }, ...prev.slice(1)];
+      }
+      return prev;
+    });
   };
 
-  const handleSaveNewVersion = (promptObj: AIPrompt, varValues: Record<string, string>, versionName: string): string | null => {
-    ensureBaselineSnapshot(promptObj);
-    const promptKey = promptObj.parentId || promptObj.id;
-
-    // Check duplicate name (case-insensitive, trimmed)
-    const trimmedName = versionName.trim();
-    const nameExists = versionSnapshots
-      .filter(s => s.promptId === promptKey)
-      .some(v => (v.versionName || '').trim().toLowerCase() === trimmedName.toLowerCase());
-    if (nameExists) {
-      return 'duplicate-name';
-    }
-
-    // Derive next version from existing snapshots
-    const existingVersions = versionSnapshots.filter(s => s.promptId === promptKey);
-    const maxVersion = existingVersions.length > 0 ? Math.max(...existingVersions.map(s => s.version)) : 0;
-    const nextVersion = maxVersion + 1;
-
-    createVersionSnapshot(promptObj, trimmedName, {
-      versionName: trimmedName,
-      variableValues: varValues,
-      versionOverride: nextVersion,
-    });
-
-    // Update prompt version to match
-    setPrompts(prev => prev.map(p =>
-      p.id === promptObj.id ? { ...p, version: nextVersion } : p
+  const handleSaveNewVersion = (promptObj: AIPrompt, varValues: Record<string, string>, versionName: string) => {
+    const snapshot: PromptVersionSnapshot = {
+      id: generateId(),
+      promptId: promptObj.parentId || promptObj.id,
+      content: promptObj.content,
+      title: promptObj.title,
+      description: promptObj.description,
+      tags: [...promptObj.tags],
+      category: promptObj.category,
+      folder: promptObj.folder,
+      commitMessage: versionName,
+      versionName,
+      createdAt: Date.now(),
+      version: promptObj.version + 1,
+      variableValues: { ...varValues },
+    };
+    setVersionSnapshots(prev => [snapshot, ...prev]);
+    
+    // Increment prompt version
+    setPrompts(prev => prev.map(p => 
+      p.id === promptObj.id ? { ...p, version: p.version + 1 } : p
     ));
     if (detailPrompt?.id === promptObj.id) {
-      setDetailPrompt(prev => prev ? { ...prev, version: nextVersion } : prev);
+      setDetailPrompt(prev => prev ? { ...prev, version: prev.version + 1 } : prev);
     }
-    return null;
   };
 
   const handleCopy = (prompt: AIPrompt) => {
     navigator.clipboard.writeText(prompt.content);
     setLastCopiedId(prompt.id);
-
-    setPrompts(prev => prev.map(p =>
-      p.id === prompt.id
-        ? { ...p, usageCount: p.usageCount + 1, lastUsedAt: Date.now() }
+    
+    setPrompts(prev => prev.map(p => 
+      p.id === prompt.id 
+        ? { ...p, usageCount: p.usageCount + 1, lastUsedAt: Date.now() } 
         : p
     ));
-
+    
     setTimeout(() => setLastCopiedId(null), 2000);
   };
 
   const togglePin = (id: string) => {
-    setPrompts(prev => prev.map(p =>
+    setPrompts(prev => prev.map(p => 
       p.id === id ? { ...p, isPinned: !p.isPinned } : p
     ));
   };
 
   const handleDelete = (id: string) => {
-    if (isCanonicalSeed(id)) {
-      alert('Canonical seed prompts cannot be deleted.');
-      return;
-    }
     if (confirm('Delete this version?')) {
       setPrompts(prev => prev.filter(p => p.id !== id));
     }
   };
 
   const handleEdit = (prompt: AIPrompt) => {
-    if (isCanonicalSeed(prompt.id)) {
-      // Create a user-owned copy for editing instead of mutating canonical
-      const copy: AIPrompt = {
-        ...prompt,
-        id: generateId(),
-        parentId: prompt.id,
-        origin: 'user',
-        version: 1,
-        createdAt: Date.now(),
-        lastUsedAt: Date.now(),
-        usageCount: 0,
-        isPinned: false,
-      };
-      setEditingPrompt(copy);
-    } else {
-      setEditingPrompt(prompt);
-    }
+    setEditingPrompt(prompt);
     setIsModalOpen(true);
   };
 
@@ -741,7 +778,6 @@ const Index: React.FC = () => {
   };
 
   const handlePromptDetailClick = (prompt: AIPrompt) => {
-    ensureBaselineSnapshot(prompt);
     setDetailPrompt(prompt);
   };
 
@@ -790,11 +826,11 @@ const Index: React.FC = () => {
       }
       return [skill, ...prev];
     });
-
+    
     if (skill.folder && !customFolders.includes(skill.folder) && skill.folder !== 'General') {
       setCustomFolders(prev => [...prev, skill.folder]);
     }
-
+    
     setIsSkillModalOpen(false);
     setEditingSkill(undefined);
   };
@@ -804,18 +840,18 @@ const Index: React.FC = () => {
     if (newPrompts.length > 0) {
       setPrompts(prev => [...newPrompts, ...prev]);
     }
-
+    
     // Add the skill
     setSkills(prev => [skill, ...prev]);
-
+    
     // Add folder if new
     if (skill.folder && !customFolders.includes(skill.folder) && skill.folder !== 'General') {
       setCustomFolders(prev => [...prev, skill.folder]);
     }
-
+    
     const newPromptsCount = newPrompts.length;
     const linkedCount = skill.embeddedPromptIds.length - newPromptsCount;
-
+    
     if (linkedCount > 0 && newPromptsCount > 0) {
       alert(`Skill "${skill.name}" imported with ${newPromptsCount} new prompt(s) and ${linkedCount} existing prompt(s) linked.`);
     } else if (linkedCount > 0) {
@@ -832,75 +868,31 @@ const Index: React.FC = () => {
   };
 
   const handleEditSkill = (skill: Skill) => {
-    if (skill.sourceType === 'collected') {
-      setEditingCollectedSkill(skill);
-      setIsCollectSkillModalOpen(true);
-    } else {
-      setEditingSkill(skill);
-      setIsSkillModalOpen(true);
-    }
+    setEditingSkill(skill);
+    setIsSkillModalOpen(true);
   };
 
   const handleRunSkill = (skill: Skill) => {
-    // Switch to full-page execution view
-    setExecutionSkillId(skill.id);
-    setViewMode(ViewMode.EXECUTION);
-  };
-
-  const handleBackToGrid = () => {
-    setViewMode(ViewMode.GRID);
-    setExecutionSkillId(undefined);
+    setRunningSkill(skill);
   };
 
   const handleRunComplete = (run: ExecutionRun) => {
     setExecutionHistory(prev => [run, ...prev]);
     if (run.objectType === 'skill') {
-      setSkills(prev => prev.map(s =>
+      setSkills(prev => prev.map(s => 
         s.id === run.objectId ? { ...s, usageCount: s.usageCount + 1, updatedAt: Date.now() } : s
       ));
     } else if (run.objectType === 'workflow') {
-      setWorkflows(prev => prev.map(w =>
+      setWorkflows(prev => prev.map(w => 
         w.id === run.objectId ? { ...w, usageCount: w.usageCount + 1, updatedAt: Date.now() } : w
       ));
     }
   };
 
   const toggleSkillPin = (id: string) => {
-    setSkills(prev => prev.map(s =>
+    setSkills(prev => prev.map(s => 
       s.id === id ? { ...s, isPinned: !s.isPinned } : s
     ));
-  };
-
-  const handleDeploySkill = async (skill: Skill) => {
-    if (!skill.sourceMarkdown) return;
-    await navigator.clipboard.writeText(skill.sourceMarkdown);
-    setSkills(prev => prev.map(s =>
-      s.id === skill.id ? {
-        ...s,
-        usageCount: s.usageCount + 1,
-        lastDeployedAt: Date.now(),
-        deploymentStatus: s.deploymentStatus === 'saved' ? 'testing' as const : s.deploymentStatus,
-        updatedAt: Date.now(),
-      } : s
-    ));
-  };
-
-  const handleExportSkillMd = (skill: Skill) => {
-    if (!skill.sourceMarkdown) return;
-    const slug = (skill.name || 'skill').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const blob = new Blob([skill.sourceMarkdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${slug}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const openCollectSkill = () => {
-    setEditingCollectedSkill(undefined);
-    setIsCollectSkillModalOpen(true);
-    setShowSkillMenu(false);
   };
 
   const handleClearHistory = () => {
@@ -918,22 +910,22 @@ const Index: React.FC = () => {
       }
       return [workflow, ...prev];
     });
-
+    
     if (workflow.folder && !customFolders.includes(workflow.folder) && workflow.folder !== 'General') {
       setCustomFolders(prev => [...prev, workflow.folder]);
     }
-
+    
     setIsWorkflowModalOpen(false);
     setEditingWorkflow(undefined);
   };
 
   const handleImportWorkflow = (workflow: Workflow, matchedSkillIds: string[]) => {
     setWorkflows(prev => [workflow, ...prev]);
-
+    
     if (workflow.folder && !customFolders.includes(workflow.folder) && workflow.folder !== 'General') {
       setCustomFolders(prev => [...prev, workflow.folder]);
     }
-
+    
     alert(`Workflow "${workflow.name}" imported with ${matchedSkillIds.length} skill(s) linked.`);
   };
 
@@ -953,7 +945,7 @@ const Index: React.FC = () => {
   };
 
   const toggleWorkflowPin = (id: string) => {
-    setWorkflows(prev => prev.map(w =>
+    setWorkflows(prev => prev.map(w => 
       w.id === id ? { ...w, isPinned: !w.isPinned } : w
     ));
   };
@@ -972,22 +964,22 @@ const Index: React.FC = () => {
       }
       return [agent, ...prev];
     });
-
+    
     if (agent.folder && !customFolders.includes(agent.folder) && agent.folder !== 'General') {
       setCustomFolders(prev => [...prev, agent.folder]);
     }
-
+    
     setIsAgentModalOpen(false);
     setEditingAgent(undefined);
   };
 
   const handleImportAgent = (agent: Agent) => {
     setAgents(prev => [agent, ...prev]);
-
+    
     if (agent.folder && !customFolders.includes(agent.folder) && agent.folder !== 'General') {
       setCustomFolders(prev => [...prev, agent.folder]);
     }
-
+    
     alert(`Agent "${agent.name}" imported successfully.`);
   };
 
@@ -1003,15 +995,15 @@ const Index: React.FC = () => {
   };
 
   const handleToggleAgentStatus = (agent: Agent) => {
-    setAgents(prev => prev.map(a =>
-      a.id === agent.id
-        ? { ...a, status: a.status === 'active' ? 'paused' : 'active', updatedAt: Date.now() }
+    setAgents(prev => prev.map(a => 
+      a.id === agent.id 
+        ? { ...a, status: a.status === 'active' ? 'paused' : 'active', updatedAt: Date.now() } 
         : a
     ));
   };
 
   const toggleAgentPin = (id: string) => {
-    setAgents(prev => prev.map(a =>
+    setAgents(prev => prev.map(a => 
       a.id === id ? { ...a, isPinned: !a.isPinned } : a
     ));
   };
@@ -1019,54 +1011,6 @@ const Index: React.FC = () => {
   const openNewAgent = () => {
     setEditingAgent(undefined);
     setIsAgentModalOpen(true);
-  };
-
-  // BACKUP & RESTORE HANDLERS
-  const handleExportBackup = () => {
-    const data: BackupData = {
-      prompts,
-      folders: customFolders,
-      skills,
-      workflows,
-      agents,
-      history: executionHistory,
-      snapshots: versionSnapshots,
-    };
-
-    const jsonString = createBackup(data);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `prompt-vault-backup-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportBackup = (data: BackupData) => {
-    // Synchronously save to local storage to ensure persistence before reload
-    localStorage.setItem('prompt_vault_data_v2', JSON.stringify(data.prompts || []));
-    localStorage.setItem('prompt_vault_folders', JSON.stringify(data.folders || []));
-    localStorage.setItem('prompt_vault_skills', JSON.stringify(data.skills || []));
-    localStorage.setItem('prompt_vault_workflows', JSON.stringify(data.workflows || []));
-    localStorage.setItem('prompt_vault_agents', JSON.stringify(data.agents || []));
-    localStorage.setItem('prompt_vault_execution_history', JSON.stringify(data.history || []));
-    localStorage.setItem('prompt_vault_version_snapshots', JSON.stringify(data.snapshots || []));
-
-    // Reload to reset all application state and ensure a clean slate
-    window.location.reload();
-  };
-
-  const handleClearAllData = () => {
-    setPrompts([]);
-    setCustomFolders(['Core Frameworks', 'Development', 'Professional', 'Marketing', 'Education', 'Creative', 'General']);
-    setSkills([]);
-    setWorkflows([]);
-    setAgents([]);
-    setExecutionHistory([]);
-    setVersionSnapshots([]);
-    localStorage.clear();
-    location.reload(); // Reload to clear any lingering state/caches
   };
 
   // Navigation handlers
@@ -1084,7 +1028,6 @@ const Index: React.FC = () => {
     setEditingSkill(undefined);
     setSkillPrefill(undefined);
     setIsSkillModalOpen(true);
-    setShowSkillMenu(false);
   };
 
   // Get counts for navigation
@@ -1115,58 +1058,58 @@ const Index: React.FC = () => {
         </div>
         <h1 className="text-xl font-bold tracking-tight text-foreground leading-none text-nowrap">Prompt Notebook</h1>
       </div>
-
+      
       <nav className="space-y-10">
         {/* Create Buttons */}
         <div className="space-y-2">
-          <button
+          <button 
             onClick={() => { openManualUpload(); setMobileSidebarOpen(false); setActiveSection('prompts'); }}
             className="w-full flex items-center gap-3 px-5 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
           >
             <Plus size={18} />
             NEW PROMPT
           </button>
-          <div className="relative">
-            <button
-              onClick={() => setShowSkillMenu(prev => !prev)}
-              className="w-full flex items-center gap-3 px-5 py-3.5 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
-            >
-              <Zap size={18} />
-              NEW SKILL
-              <ChevronRight size={14} className={`ml-auto transition-transform ${showSkillMenu ? 'rotate-90' : ''}`} />
-            </button>
-            {showSkillMenu && (
-              <div className="mt-1 space-y-1">
-                <button
-                  onClick={() => { openCollectSkill(); setMobileSidebarOpen(false); setActiveSection('skills'); }}
-                  className="w-full flex items-center gap-3 px-5 py-2.5 bg-primary/10 hover:bg-primary/20 text-foreground rounded-lg text-xs font-bold transition-all"
-                >
-                  <Download size={14} />
-                  COLLECT SKILL
-                </button>
-                <button
-                  onClick={() => { openNewSkill(); setMobileSidebarOpen(false); setActiveSection('skills'); }}
-                  className="w-full flex items-center gap-3 px-5 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-xs font-bold transition-all"
-                >
-                  <Edit3 size={14} />
-                  COMPOSE SKILL
-                </button>
-              </div>
-            )}
-          </div>
-          <button
+          <button 
+            onClick={() => { openNewSkill(); setMobileSidebarOpen(false); setActiveSection('skills'); }}
+            className="w-full flex items-center gap-3 px-5 py-3.5 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            <Zap size={18} />
+            NEW SKILL
+          </button>
+          <button 
             onClick={() => { openNewWorkflow(); setMobileSidebarOpen(false); setActiveSection('workflows'); }}
             className="w-full flex items-center gap-3 px-5 py-3.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
           >
             <GitBranch size={18} />
             NEW WORKFLOW
           </button>
-          <button
+          <button 
             onClick={() => { openNewAgent(); setMobileSidebarOpen(false); setActiveSection('agents'); }}
             className="w-full flex items-center gap-3 px-5 py-3.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
           >
             <Bot size={18} />
             NEW AGENT
+          </button>
+        </div>
+
+        {/* Backup & Restore */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide mb-3 flex items-center gap-2">
+            <Archive size={14} /> Backup & Restore
+          </h3>
+          <button
+            onClick={handleExportBackup}
+            className="w-full flex items-center gap-3 px-5 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            <HardDrive size={16} />
+            EXPORT BACKUP
+          </button>
+          <button
+            onClick={handleImportBackupClick}
+            className="w-full flex items-center gap-3 px-5 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            <UploadCloud size={16} />
+            IMPORT BACKUP
           </button>
         </div>
 
@@ -1179,13 +1122,13 @@ const Index: React.FC = () => {
             <div className="space-y-1">
               {frequentlyUsed.map(p => (
                 <div key={p.id} className="group flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-all">
-                  <button
+                  <button 
                     onClick={() => { handleEdit(p); setMobileSidebarOpen(false); }}
                     className="flex-1 text-left text-sm font-medium text-foreground/70 group-hover:text-foreground truncate pr-2"
                   >
                     {p.title}
                   </button>
-                  <button
+                  <button 
                     onClick={() => handleCopy(p)}
                     className={`p-2 rounded-md transition-all ${lastCopiedId === p.id ? 'bg-primary/20 text-primary' : 'text-foreground/50 hover:text-primary hover:bg-primary/10'}`}
                     title="Quick Copy"
@@ -1204,7 +1147,7 @@ const Index: React.FC = () => {
             <h3 className="text-xs font-bold text-foreground/60 uppercase tracking-wide flex items-center gap-2">
               <FolderIcon size={14} /> Folders / Clients
             </h3>
-            <button
+            <button 
               onClick={handleCreateFolder}
               className="p-1.5 hover:bg-muted rounded-md text-foreground/50 hover:text-foreground transition-colors"
               title="Create Folder"
@@ -1224,11 +1167,11 @@ const Index: React.FC = () => {
                     <span className="truncate">{folder}</span>
                   </span>
                   <span className="text-xs font-medium opacity-50 flex-shrink-0 ml-2">
-                    {folder === 'All'
+                    {folder === 'All' 
                       ? (activeSection === 'skills' ? skills.length : prompts.length)
-                      : (activeSection === 'skills'
-                        ? skills.filter(s => s.folder === folder).length
-                        : prompts.filter(p => p.folder === folder).length)}
+                      : (activeSection === 'skills' 
+                          ? skills.filter(s => s.folder === folder).length 
+                          : prompts.filter(p => p.folder === folder).length)}
                   </span>
                 </button>
                 {folder !== 'All' && (
@@ -1259,35 +1202,44 @@ const Index: React.FC = () => {
             ))}
           </div>
         </div>
-
-        {/* Settings Footer */}
-        <div className="pt-6 mt-auto border-t border-border">
-          <button
-            onClick={() => { setIsSettingsModalOpen(true); setMobileSidebarOpen(false); }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-foreground/60 hover:text-foreground hover:bg-muted rounded-lg text-sm font-medium transition-all"
-          >
-            <Settings size={18} />
-            System Settings
-          </button>
-        </div>
-      </nav >
-    </div >
+      </nav>
+    </div>
   );
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
+      {/* Hidden backup file input */}
+      <input
+        type="file"
+        ref={backupFileInputRef}
+        onChange={handleBackupFileImport}
+        accept=".json"
+        className="hidden"
+      />
+
+      {/* Backup toast notification */}
+      {backupAlert && (
+        <div className={`fixed top-6 right-6 z-[100] max-w-sm px-5 py-4 rounded-xl shadow-lg border text-sm font-medium animate-in fade-in slide-in-from-top-3 ${backupAlert.type === 'success' ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-destructive/10 border-destructive/30 text-destructive'}`}>
+          <div className="flex items-start gap-3">
+            {backupAlert.type === 'success' ? <Check size={18} className="mt-0.5 shrink-0" /> : <X size={18} className="mt-0.5 shrink-0" />}
+            <span>{backupAlert.message}</span>
+            <button onClick={() => setBackupAlert(null)} className="ml-2 shrink-0 opacity-60 hover:opacity-100"><X size={14} /></button>
+          </div>
+        </div>
+      )}
+
       {/* Mobile sidebar overlay */}
       {mobileSidebarOpen && (
-        <div
+        <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setMobileSidebarOpen(false)}
         />
       )}
-
+      
       {/* Mobile sidebar drawer */}
       <aside className={`fixed inset-y-0 left-0 w-72 bg-card border-r border-border flex flex-col z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-end p-4 border-b border-border">
-          <button
+          <button 
             onClick={() => setMobileSidebarOpen(false)}
             className="p-2 hover:bg-muted rounded-lg text-foreground/60 hover:text-foreground transition-colors"
           >
@@ -1305,16 +1257,16 @@ const Index: React.FC = () => {
       <main className="flex-1 flex flex-col overflow-hidden bg-background">
         <header className="h-18 border-b border-border flex items-center justify-between px-4 lg:px-8 bg-card sticky top-0 z-30 gap-3">
           {/* Mobile hamburger menu */}
-          <button
+          <button 
             onClick={() => setMobileSidebarOpen(true)}
             className="p-2 hover:bg-muted rounded-lg text-foreground/60 hover:text-foreground transition-colors lg:hidden"
           >
             <Menu size={22} />
           </button>
-
+          
           <div className="flex-1 max-w-xl relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40 group-focus-within:text-primary transition-colors" size={18} />
-            <input
+            <input 
               type="text"
               placeholder="Search library..."
               className="w-full bg-background border border-border rounded-full py-2.5 pl-12 pr-5 outline-none focus:ring-2 focus:ring-primary/30 transition-all text-sm text-foreground placeholder:text-foreground/40"
@@ -1327,18 +1279,18 @@ const Index: React.FC = () => {
             {(activeSection === 'prompts' || activeSection === 'skills') && (
               <>
                 {activeSection === 'prompts' && (
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileImport}
-                    accept=".json,.csv"
-                    className="hidden"
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileImport} 
+                    accept=".json,.csv" 
+                    className="hidden" 
                   />
                 )}
-                <button
-                  onClick={() => {
+                <button 
+                  onClick={() => { 
                     setSmartImportDefaultMode(activeSection === 'skills' ? 'skill' : 'prompt');
-                    setIsSmartImportOpen(true);
+                    setIsSmartImportOpen(true); 
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent/90 rounded-lg text-sm font-bold text-accent-foreground transition-all"
                 >
@@ -1346,7 +1298,7 @@ const Index: React.FC = () => {
                   MAGIC IMPORT
                 </button>
                 {activeSection === 'prompts' && (
-                  <button
+                  <button 
                     onClick={handleImportClick}
                     className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
                   >
@@ -1357,7 +1309,7 @@ const Index: React.FC = () => {
 
                 {activeSection === 'prompts' && (
                   <div className="relative">
-                    <button
+                    <button 
                       onClick={() => setShowExportMenu(!showExportMenu)}
                       className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
                     >
@@ -1366,14 +1318,14 @@ const Index: React.FC = () => {
                     </button>
                     {showExportMenu && (
                       <div className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl shadow-card-hover z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                        <button
+                        <button 
                           onClick={handleExportJSON}
                           className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors border-b border-border"
                         >
                           <FileJson size={16} className="text-primary" />
                           Export as JSON
                         </button>
-                        <button
+                        <button 
                           onClick={handleExportCSV}
                           className="w-full flex items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-foreground hover:bg-muted transition-colors"
                         >
@@ -1386,7 +1338,7 @@ const Index: React.FC = () => {
                 )}
 
                 {activeSection === 'skills' && (
-                  <button
+                  <button 
                     onClick={() => setIsSkillImportModalOpen(true)}
                     className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
                   >
@@ -1398,7 +1350,7 @@ const Index: React.FC = () => {
             )}
 
             {activeSection === 'workflows' && (
-              <button
+              <button 
                 onClick={() => setIsWorkflowImportModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
               >
@@ -1408,7 +1360,7 @@ const Index: React.FC = () => {
             )}
 
             {activeSection === 'agents' && (
-              <button
+              <button 
                 onClick={() => setIsAgentImportModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 rounded-lg text-sm font-bold text-secondary-foreground transition-all"
               >
@@ -1416,7 +1368,7 @@ const Index: React.FC = () => {
                 IMPORT
               </button>
             )}
-
+             
             <div className="flex items-center gap-1 bg-muted p-1.5 rounded-lg">
               <button onClick={() => setViewMode(ViewMode.GRID)} className={`p-2 rounded-md transition-all ${viewMode === ViewMode.GRID ? 'bg-primary text-primary-foreground' : 'text-foreground/50 hover:text-foreground'}`}><Grid size={18} /></button>
               <button onClick={() => setViewMode(ViewMode.TABLE)} className={`p-2 rounded-md transition-all ${viewMode === ViewMode.TABLE ? 'bg-primary text-primary-foreground' : 'text-foreground/50 hover:text-foreground'}`}><TableIcon size={18} /></button>
@@ -1455,8 +1407,8 @@ const Index: React.FC = () => {
                 onCategorySelect={handleCategorySelect}
                 onPromptClick={handleEdit}
                 onSkillClick={handleEditSkill}
-                onWorkflowClick={() => { }}
-                onAgentClick={() => { }}
+                onWorkflowClick={() => {}}
+                onAgentClick={() => {}}
               />
             )}
 
@@ -1493,6 +1445,7 @@ const Index: React.FC = () => {
                             <table className="w-full text-left border-collapse">
                               <thead>
                                 <tr className="bg-muted/50 border-b border-border">
+                                  <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Type</th>
                                   <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide">Name</th>
                                   <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-center">Pin</th>
                                   <th className="p-5 text-xs font-bold text-foreground/60 uppercase tracking-wide text-right">Actions</th>
@@ -1500,19 +1453,26 @@ const Index: React.FC = () => {
                               </thead>
                               <tbody className="divide-y divide-border">
                                 {filteredPrompts.map(prompt => (
-                                  <tr
-                                    key={prompt.id}
+                                  <tr 
+                                    key={prompt.id} 
                                     className="hover:bg-muted/30 transition-colors group cursor-pointer"
-                                    onClick={() => handlePromptDetailClick(prompt)}
+                                    onClick={() => handleEdit(prompt)}
                                   >
+                                    <td className="p-5">
+                                      <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${
+                                        prompt.type === 'system' ? 'bg-primary text-primary-foreground' : 'bg-accent text-accent-foreground'
+                                      }`}>
+                                        {prompt.type}
+                                      </span>
+                                    </td>
                                     <td className="p-5">
                                       <div className="flex flex-col gap-1">
                                         <span className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">{prompt.title}</span>
-                                        <span className="text-sm text-foreground/60">{prompt.description}</span>
+                                        <span className="text-sm text-foreground/60">v{prompt.version} • {prompt.description}</span>
                                       </div>
                                     </td>
                                     <td className="p-5 text-center">
-                                      <button
+                                      <button 
                                         onClick={(e) => { e.stopPropagation(); togglePin(prompt.id); }}
                                         className={`p-2.5 rounded-lg transition-all ${prompt.isPinned ? 'text-amber bg-amber/10' : 'text-foreground/40 hover:text-foreground'}`}
                                       >
@@ -1534,15 +1494,13 @@ const Index: React.FC = () => {
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {filteredPrompts.map(prompt => (
-                              <PromptCard
-                                key={prompt.id}
-                                prompt={prompt}
-                                onEdit={handleEdit}
+                              <PromptCard 
+                                key={prompt.id} 
+                                prompt={prompt} 
+                                onEdit={handleEdit} 
                                 onDelete={handleDelete}
                                 onCopy={() => handleCopy(prompt)}
                                 onTogglePin={() => togglePin(prompt.id)}
-                                onUpdatePrompt={handleUpdatePrompt}
-                                onSaveNewVersion={handleSaveNewVersion}
                                 isCopied={lastCopiedId === prompt.id}
                                 versionCount={groupedPrompts.get(prompt.parentId || prompt.id)?.length}
                                 onClick={() => handlePromptDetailClick(prompt)}
@@ -1564,74 +1522,33 @@ const Index: React.FC = () => {
                 {/* SKILLS SECTION */}
                 {activeSection === 'skills' && (
                   <>
-                    {viewMode === ViewMode.EXECUTION && executionSkillId ? (
-                      (() => {
-                        const skill = skills.find(s => s.id === executionSkillId);
-                        if (!skill) {
-                          // Fallback if skill not found (e.g. deleted)
-                          setViewMode(ViewMode.GRID);
-                          return null;
-                        }
-                        return (
-                          <div className="h-[calc(100vh-140px)] -mx-6 -my-6">
-                            <SkillExecutionView
-                              skill={skill}
-                              prompts={prompts}
-                              onBack={handleBackToGrid}
-                              onEdit={() => {
-                                setEditingSkill(skill);
-                                if (skill.sourceType === 'collected') {
-                                  setEditingCollectedSkill(skill);
-                                  setIsCollectSkillModalOpen(true);
-                                } else {
-                                  setIsSkillModalOpen(true);
-                                }
-                              }}
-                              onRunComplete={handleRunComplete}
-                            />
-                          </div>
-                        );
-                      })()
+                    {filteredSkills.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {filteredSkills.map(skill => (
+                          <SkillCard
+                            key={skill.id}
+                            skill={skill}
+                            promptCount={skill.embeddedPromptIds.length}
+                            onEdit={handleEditSkill}
+                            onDelete={handleDeleteSkill}
+                            onRun={handleRunSkill}
+                            onTogglePin={() => toggleSkillPin(skill.id)}
+                          />
+                        ))}
+                      </div>
                     ) : (
-                      <>
-                        {filteredSkills.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {filteredSkills.map(skill => (
-                              <SkillCard
-                                key={skill.id}
-                                skill={skill}
-                                promptCount={skill.embeddedPromptIds.length}
-                                onEdit={handleEditSkill}
-                                onDelete={handleDeleteSkill}
-                                onRun={handleRunSkill}
-                                onTogglePin={() => toggleSkillPin(skill.id)}
-                              />
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
-                            <Zap size={48} className="text-foreground/20 mb-6" />
-                            <h3 className="text-2xl font-bold mb-2 text-foreground">No skills yet</h3>
-                            <p className="text-foreground/60 text-base mb-6">Collect a skill from the web or build one from your prompts.</p>
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={openCollectSkill}
-                                className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all"
-                              >
-                                <Download size={18} />
-                                COLLECT SKILL
-                              </button>
-                              <button
-                                onClick={openNewSkill}
-                                className="flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all"
-                              >
-                                <Edit3 size={18} />
-                                COMPOSE SKILL
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </>
+                      <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
+                        <Zap size={48} className="text-foreground/20 mb-6" />
+                        <h3 className="text-2xl font-bold mb-2 text-foreground">No skills yet</h3>
+                        <p className="text-foreground/60 text-base mb-6">Create your first skill to bundle prompts into a reusable capability.</p>
+                        <button 
+                          onClick={openNewSkill}
+                          className="flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all"
+                        >
+                          <Plus size={18} />
+                          CREATE SKILL
+                        </button>
+                      </div>
                     )}
                   </>
                 )}
@@ -1658,7 +1575,7 @@ const Index: React.FC = () => {
                         <GitBranch size={48} className="text-foreground/20 mb-6" />
                         <h3 className="text-2xl font-bold mb-2 text-foreground">No workflows yet</h3>
                         <p className="text-foreground/60 text-base mb-6">Chain skills into automated sequences.</p>
-                        <button
+                        <button 
                           onClick={openNewWorkflow}
                           className="flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all"
                         >
@@ -1692,7 +1609,7 @@ const Index: React.FC = () => {
                         <Bot size={48} className="text-foreground/20 mb-6" />
                         <h3 className="text-2xl font-bold mb-2 text-foreground">No agents yet</h3>
                         <p className="text-foreground/60 text-base mb-6">Deploy automated workflow executors.</p>
-                        <button
+                        <button 
                           onClick={openNewAgent}
                           className="flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all"
                         >
@@ -1718,15 +1635,7 @@ const Index: React.FC = () => {
       </main>
 
       {/* Modals */}
-      <SystemSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        onExportBackup={handleExportBackup}
-        onImportBackup={handleImportBackup}
-        onClearAllData={handleClearAllData}
-      />
-
-      <PromptModal
+      <PromptModal 
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setEditingPrompt(undefined); }}
         onSave={handleSavePrompt}
@@ -1743,16 +1652,6 @@ const Index: React.FC = () => {
         availableFolders={customFolders}
         availablePrompts={latestPrompts}
         prefill={skillPrefill}
-      />
-
-      <CollectSkillModal
-        skill={editingCollectedSkill}
-        isOpen={isCollectSkillModalOpen}
-        onClose={() => setIsCollectSkillModalOpen(false)}
-        onSave={handleSaveSkill}
-        onDeploy={handleDeploySkill}
-        onExportMd={handleExportSkillMd}
-        availableFolders={customFolders}
       />
 
       {runningSkill && (
