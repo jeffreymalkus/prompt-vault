@@ -11,7 +11,9 @@ import {
   ActiveSection,
   NavigationView,
   generateId,
-  DeploymentStatus
+  DeploymentStatus,
+  SkillArchetype,
+  SkillPlaybook
 } from '../types';
 import { CANONICAL_SEED_PROMPTS, mergeWithCanonicalSeeds, isCanonicalSeed } from '../data/canonicalSeedPrompts';
 import { PromptCard } from '../components/PromptCard';
@@ -219,6 +221,10 @@ const Index: React.FC = () => {
           ...s,
           sourceType: s.sourceType || 'composed',
           deploymentStatus: s.deploymentStatus || 'deployed',
+          // Legacy migration: default archetype/playbook for pre-deterministic-engine skills
+          archetype: s.archetype || (s.sourceType === 'collected' ? SkillArchetype.PROMPT_TEXT : SkillArchetype.SKILL_MARKDOWN),
+          playbook: s.playbook || (s.sourceType === 'collected' ? SkillPlaybook.RUN_IN_CHAT : SkillPlaybook.RUN_IN_APP),
+          provenance: s.provenance || { domain: 'legacy', detectedKind: s.archetype || SkillArchetype.PROMPT_TEXT, importedAtISO: new Date().toISOString(), confidence: 0 },
         })));
       } catch (e) {
         console.error('Failed to load skills', e);

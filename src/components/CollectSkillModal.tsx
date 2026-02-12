@@ -69,10 +69,12 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   // Action feedback
   const [copied, setCopied] = useState(false);
 
-  // Run analysis on text change (debounced slightly in real app, here direct)
+  // Run analysis on text change — ONLY during paste step for live preview.
+  // Once the user clicks Analyze, handleAnalyze takes over and this must not overwrite.
   useEffect(() => {
     if (step === 'paste' && sourceMarkdown) {
-      setParseResult(detectArchetype(sourceMarkdown));
+      const result = detectArchetype(sourceMarkdown);
+      setParseResult(result);
     }
   }, [sourceMarkdown, step]);
 
@@ -122,10 +124,11 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   const handleAnalyze = () => {
     if (!sourceMarkdown.trim()) return;
 
-    // Use the latest analysis result
+    // Run the deterministic parser on the raw input
     const result = detectArchetype(sourceMarkdown);
     setParseResult(result);
 
+    // Map synthesized metadata → local state
     setName(result.title);
     setDescription(result.description);
     setDetectedVars(result.detectedInputs);
@@ -136,11 +139,10 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
       setSourceUrl(result.resourceUrl);
     }
 
-    // For URL-based resources, replace the raw URL in sourceMarkdown
-    // with synthesized content so the execution view shows clean metadata
-    if (result.playbook === SkillPlaybook.IMPLEMENTATION_RESOURCE && result.resourceUrl) {
-      setSourceMarkdown(result.description);
-    }
+    // DO NOT mutate sourceMarkdown here.
+    // The raw URL (or text) stays in sourceMarkdown during editing.
+    // The swap to synthesized content happens in handleSubmit to avoid
+    // triggering the useEffect → re-parse → overwrite race condition.
 
     setStep('metadata');
   };
