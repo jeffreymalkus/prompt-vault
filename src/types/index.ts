@@ -61,15 +61,15 @@ export interface Skill {
   isPinned?: boolean;
 }
 
-// Scan skill procedure text for [VARIABLE] patterns
+// Scan skill procedure text for [VARIABLE] patterns (supports [KEY] and [KEY:default])
 export function scanSkillInputs(text: string): string[] {
   const stoplist = new Set(['OPTIONAL', 'REQUIRED', 'EXAMPLE', 'NOTES', 'RULES', 'STEPS']);
-  const regex = /\[([A-Z][A-Z0-9_ ]{1,50})\]/g;
   const seen = new Set<string>();
   const result: string[] = [];
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    const normalized = match[1].trim().toUpperCase().replace(/\s+/g, '_');
+  for (const m of text.matchAll(PLACEHOLDER_REGEX)) {
+    const key = canonicalKey(m[1]);
+    if (!key) continue;
+    const normalized = key.trim().toUpperCase().replace(/\s+/g, '_');
     if (!stoplist.has(normalized) && !seen.has(normalized)) {
       seen.add(normalized);
       result.push(`[${normalized}]`);
