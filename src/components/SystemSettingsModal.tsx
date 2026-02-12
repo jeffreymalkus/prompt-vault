@@ -1,12 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { X, Download, Upload, Trash2, ShieldAlert, CheckCircle, AlertTriangle, Settings } from 'lucide-react';
-import { validateBackup, BackupData } from '../utils/backup';
+import { validateBackup, mergeBackupData, BackupData, RestoreReport } from '../utils/backup';
 
 interface SystemSettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     onExportBackup: () => void;
-    onImportBackup: (data: BackupData) => void;
+    onImportBackup: (data: BackupData, mode: 'replace' | 'merge') => void;
     onClearAllData: () => void;
 }
 
@@ -21,6 +21,7 @@ export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({
     const [importError, setImportError] = useState<string | null>(null);
     const [importSuccess, setImportSuccess] = useState<string | null>(null);
     const [pendingImport, setPendingImport] = useState<BackupData | null>(null);
+    const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     if (!isOpen) return null;
@@ -39,7 +40,7 @@ export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({
                 const content = ev.target?.result as string;
                 const data = validateBackup(content);
                 setPendingImport(data);
-                setImportSuccess(`Valid backup found! Contains ${data.prompts.length} prompts, ${data.skills.length} skills.`);
+                setImportSuccess(`Valid backup found! Contains ${data.prompts.length} prompts, ${data.skills.length} skills, ${data.snapshots.length} versions.`);
             } catch (err: any) {
                 setImportError(err.message || 'Failed to parse backup file');
             }
@@ -50,8 +51,11 @@ export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({
 
     const confirmImport = () => {
         if (pendingImport) {
-            if (confirm('WARNING: This will overwrite your current library. Are you sure?')) {
-                onImportBackup(pendingImport);
+            const warning = importMode === 'replace'
+                ? 'WARNING: This will overwrite your entire library with the backup contents. Are you sure?'
+                : 'This will merge the backup into your library. Matching IDs will be updated, new items will be added. Continue?';
+            if (confirm(warning)) {
+                onImportBackup(pendingImport, importMode);
                 setPendingImport(null);
                 setImportSuccess(null);
                 onClose();
@@ -142,7 +146,27 @@ export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({
                                             <span className="font-semibold">Import Backup</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground leading-relaxed">
-                                            Restore your library from a backup file. Overwrites current data.
+                                            Restore your library from a backup file.
+                                        </p>
+                                        {/* Import mode toggle */}
+                                        <div className="flex rounded-lg border border-border overflow-hidden">
+                                            <button
+                                                onClick={() => setImportMode('merge')}
+                                                className={`flex-1 py-1.5 text-xs font-bold transition-colors ${importMode === 'merge' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground/60 hover:text-foreground'}`}
+                                            >
+                                                Merge
+                                            </button>
+                                            <button
+                                                onClick={() => setImportMode('replace')}
+                                                className={`flex-1 py-1.5 text-xs font-bold transition-colors ${importMode === 'replace' ? 'bg-destructive text-destructive-foreground' : 'bg-background text-foreground/60 hover:text-foreground'}`}
+                                            >
+                                                Replace All
+                                            </button>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground leading-snug">
+                                            {importMode === 'merge'
+                                                ? 'Adds new items and updates existing ones by ID. Keeps local items not in the backup.'
+                                                : 'Overwrites your entire library with the backup contents.'}
                                         </p>
                                         <input
                                             type="file"
@@ -178,9 +202,9 @@ export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({
                                             <div className="flex justify-end pt-2">
                                                 <button
                                                     onClick={confirmImport}
-                                                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm"
+                                                    className={`px-4 py-2 text-white rounded-md text-xs font-bold transition-colors shadow-sm ${importMode === 'merge' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'}`}
                                                 >
-                                                    CONFIRM RESTORE
+                                                    {importMode === 'merge' ? 'CONFIRM MERGE' : 'CONFIRM REPLACE'}
                                                 </button>
                                             </div>
                                         )}

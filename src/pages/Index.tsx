@@ -33,7 +33,7 @@ import { SmartImportModal } from '../components/SmartImportModal';
 import { CollectSkillModal } from '../components/CollectSkillModal';
 import { SkillExecutionView } from '../components/SkillExecutionView';
 import { SystemSettingsModal } from '../components/SystemSettingsModal';
-import { createBackup, BackupData } from '../utils/backup';
+import { createBackup, BackupData, mergeBackupData, RestoreReport } from '../utils/backup';
 import { PromptDetailModal } from '../components/PromptDetailModal';
 import { VersionHistoryDrawer } from '../components/VersionHistoryDrawer';
 import { NavigationTabs } from '../components/NavigationTabs';
@@ -1043,8 +1043,31 @@ const Index: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportBackup = (data: BackupData) => {
-    // Synchronously save to local storage to ensure persistence before reload
+  const handleImportBackup = (data: BackupData, mode: 'replace' | 'merge' = 'replace') => {
+    if (mode === 'merge') {
+      const currentData: BackupData = {
+        prompts,
+        folders: customFolders,
+        skills,
+        workflows,
+        agents,
+        history: executionHistory,
+        snapshots: versionSnapshots,
+      };
+      const { merged } = mergeBackupData(currentData, data);
+
+      // Update state in-place (no reload needed)
+      setPrompts(merged.prompts);
+      setCustomFolders(merged.folders);
+      setSkills(merged.skills);
+      setWorkflows(merged.workflows);
+      setAgents(merged.agents);
+      setExecutionHistory(merged.history);
+      setVersionSnapshots(merged.snapshots);
+      return;
+    }
+
+    // Replace mode: synchronously save to localStorage and reload
     localStorage.setItem('prompt_vault_data_v2', JSON.stringify(data.prompts || []));
     localStorage.setItem('prompt_vault_folders', JSON.stringify(data.folders || []));
     localStorage.setItem('prompt_vault_skills', JSON.stringify(data.skills || []));
@@ -1053,7 +1076,6 @@ const Index: React.FC = () => {
     localStorage.setItem('prompt_vault_execution_history', JSON.stringify(data.history || []));
     localStorage.setItem('prompt_vault_version_snapshots', JSON.stringify(data.snapshots || []));
 
-    // Reload to reset all application state and ensure a clean slate
     window.location.reload();
   };
 
