@@ -100,7 +100,7 @@ export function assembleSkillForLLM(skill: Skill): string {
   }
   const sections: string[] = [];
   sections.push(`# Skill: ${skill.name}`);
-  
+
   if (skill.expertPersona) {
     sections.push(`\n## Context & Persona\n\n${skill.expertPersona}`);
   }
@@ -131,7 +131,7 @@ export function parseTextToSkillFields(text: string): {
   procedure: string;
 } {
   const lines = text.split(/\r?\n/);
-  
+
   type Block = { type: 'persona' | 'rules' | 'output' | 'other'; lines: string[] };
   const blocks: Block[] = [];
   let currentBlock: Block = { type: 'other', lines: [] };
@@ -258,7 +258,8 @@ export interface ExecutionRun {
 export enum ViewMode {
   GRID = 'GRID',
   LIST = 'LIST',
-  TABLE = 'TABLE'
+  TABLE = 'TABLE',
+  EXECUTION = 'EXECUTION'
 }
 
 export type NavigationView = 'object' | 'capability';

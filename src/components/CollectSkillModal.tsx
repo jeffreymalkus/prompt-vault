@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Skill, DEFAULT_CATEGORIES, generateId, scanSkillInputs, DeploymentStatus, SkillEcosystem } from '../types/index';
-import { X, Download, Upload, Copy, Check, ChevronDown, Eye, Edit3, ExternalLink } from 'lucide-react';
+import { Skill, DEFAULT_CATEGORIES, generateId, DeploymentStatus, SkillEcosystem } from '../types/index';
+import { analyzeSkillText, AnalysisResult } from '../utils/skillParser';
+import { X, Download, Upload, Copy, Check, ChevronDown, Eye, Edit3, ExternalLink, Wand2, Link2, Key, FolderOpen } from 'lucide-react';
 
 interface CollectSkillModalProps {
   skill?: Skill;
@@ -28,29 +29,6 @@ const STATUS_OPTIONS: { value: DeploymentStatus; label: string; color: string }[
   { value: 'archived', label: 'Archived', color: 'bg-muted text-muted-foreground/60' },
 ];
 
-function autoDetectName(markdown: string): string {
-  const lines = markdown.split(/\r?\n/);
-  for (const line of lines) {
-    const heading = line.match(/^#\s+(.+)/);
-    if (heading) return heading[1].trim();
-    const trimmed = line.trim();
-    if (trimmed.length > 0 && trimmed.length <= 100) return trimmed;
-  }
-  return '';
-}
-
-function autoDetectDescription(markdown: string): string {
-  const lines = markdown.split(/\r?\n/);
-  let pastHeading = false;
-  for (const line of lines) {
-    if (/^#\s+/.test(line)) { pastHeading = true; continue; }
-    const trimmed = line.trim();
-    if (pastHeading && trimmed.length > 10) return trimmed.slice(0, 200);
-    if (!pastHeading && trimmed.length > 10 && !/^#/.test(trimmed)) return trimmed.slice(0, 200);
-  }
-  return '';
-}
-
 export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   skill,
   isOpen,
@@ -70,6 +48,9 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   const [sourceMarkdown, setSourceMarkdown] = useState('');
   const [showRawEdit, setShowRawEdit] = useState(false);
 
+  // Magic Analysis State
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+
   // Metadata
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -86,12 +67,23 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   // Action feedback
   const [copied, setCopied] = useState(false);
 
+  // Run analysis on text change (debounced slightly in real app, here direct)
+  useEffect(() => {
+    if (step === 'paste' && sourceMarkdown) {
+      setAnalysis(analyzeSkillText(sourceMarkdown));
+    }
+  }, [sourceMarkdown, step]);
+
   // Reset on open/skill change
   useEffect(() => {
     if (!isOpen) return;
     if (skill) {
       setStep('metadata');
       setSourceMarkdown(skill.sourceMarkdown || '');
+      // Run initial analysis to populate vars even in edit mode
+      const res = analyzeSkillText(skill.sourceMarkdown || '');
+      setAnalysis(res);
+
       setName(skill.name);
       setDescription(skill.description);
       setCategory(skill.category);
@@ -101,11 +93,12 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
       setSourceEcosystem(skill.sourceEcosystem || 'other');
       setDeploymentStatus(skill.deploymentStatus || 'saved');
       setDeploymentTarget(skill.deploymentTarget || '');
-      setDetectedVars(scanSkillInputs(skill.sourceMarkdown || ''));
+      setDetectedVars(skill.inputsRequired || []); // Use stored vars or re-detect
       setShowRawEdit(false);
     } else {
       setStep('paste');
       setSourceMarkdown('');
+      setAnalysis(null);
       setName('');
       setDescription('');
       setCategory('Creative');
@@ -122,12 +115,25 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
 
   const handleAnalyze = () => {
     if (!sourceMarkdown.trim()) return;
-    const detectedName = autoDetectName(sourceMarkdown);
-    const detectedDesc = autoDetectDescription(sourceMarkdown);
-    const vars = scanSkillInputs(sourceMarkdown);
-    setName(detectedName);
-    setDescription(detectedDesc);
-    setDetectedVars(vars);
+
+    // Use the latest analysis result
+    const result = analyzeSkillText(sourceMarkdown);
+
+    setName(result.detectedName || '');
+    setDescription(result.detectedDescription || '');
+    setDetectedVars(result.variables);
+
+    // Auto-fill URL and Ecosystem from first detected link if available
+    if (result.urls.length > 0) {
+      setSourceUrl(result.urls[0].url);
+      // Map ecosystem from parsed result if we tracked it per URL, or use overall result logic
+      setSourceEcosystem(result.ecosystem);
+    }
+
+    if (result.suggestedCategory) {
+      setCategory(result.suggestedCategory);
+    }
+
     setStep('metadata');
   };
 
@@ -140,7 +146,6 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
       setSourceMarkdown(text);
     };
     reader.readAsText(file);
-    // Reset input so same file can be re-selected
     e.target.value = '';
   };
 
@@ -178,27 +183,21 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
 
   const handleCopySkill = async () => {
     if (!sourceMarkdown) return;
-    
-    // If parent provided a deploy handler (which handles clipboard + state updates), use it
     if (onDeploy && skill) {
       onDeploy(skill);
     } else {
-      // Fallback local clipboard
       await navigator.clipboard.writeText(sourceMarkdown);
     }
-    
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleExportMd = () => {
     if (!sourceMarkdown) return;
-    
     if (onExportMd && skill) {
       onExportMd(skill);
       return;
     }
-
     const slug = (name || 'skill').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const blob = new Blob([sourceMarkdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -244,11 +243,10 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopySkill}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${
-                    copied
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${copied
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-primary/15 text-primary hover:bg-primary/25'
-                  }`}
+                    }`}
                 >
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                   {copied ? 'COPIED!' : 'COPY SKILL'}
@@ -303,13 +301,45 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
               </div>
             </div>
 
+            {/* Magic Helper Bar */}
+            <div className="px-4 py-3 bg-muted/30 border border-border rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Wand2 size={14} className="text-amber-500" />
+                  Magic Analysis
+                </span>
+                <div className="h-4 w-px bg-border" />
+
+                {/* Status Badges */}
+                {analysis && (
+                  <>
+                    <span className={`flex items-center gap-1.5 ${analysis.urls.length > 0 ? 'text-blue-500' : ''}`}>
+                      <Link2 size={14} /> {analysis.urls.length} Links
+                    </span>
+                    <span className={`flex items-center gap-1.5 ${analysis.variables.length > 0 ? 'text-green-500' : ''}`}>
+                      <Key size={14} /> {analysis.variables.length} Vars
+                    </span>
+                    {analysis.suggestedCategory && (
+                      <span className="flex items-center gap-1.5 text-purple-500">
+                        <FolderOpen size={14} /> {analysis.suggestedCategory}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="text-[10px] text-muted-foreground/60 uppercase font-bold tracking-wider">
+                {sourceMarkdown.length > 0 ? 'Active' : 'Waiting for input...'}
+              </div>
+            </div>
+
             <div className="flex justify-end pt-2">
               <button
                 type="button"
                 onClick={handleAnalyze}
                 disabled={!sourceMarkdown.trim()}
-                className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed group"
               >
+                <Wand2 size={16} className="group-hover:rotate-12 transition-transform" />
                 Analyze & Continue
               </button>
             </div>
@@ -327,18 +357,16 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowRawEdit(false)}
-                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                      !showRawEdit ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
-                    }`}
+                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-all ${!showRawEdit ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+                      }`}
                   >
                     <Eye size={12} /> Preview
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowRawEdit(true)}
-                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                      showRawEdit ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
-                    }`}
+                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-all ${showRawEdit ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+                      }`}
                   >
                     <Edit3 size={12} /> Edit
                   </button>
@@ -351,7 +379,9 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
                   value={sourceMarkdown}
                   onChange={(e) => {
                     setSourceMarkdown(e.target.value);
-                    setDetectedVars(scanSkillInputs(e.target.value));
+                    const res = analyzeSkillText(e.target.value);
+                    setAnalysis(res);
+                    setDetectedVars(res.variables);
                   }}
                 />
               ) : (

@@ -29,6 +29,7 @@ import { AgentModal } from '../components/AgentModal';
 import { AgentImportModal } from '../components/AgentImportModal';
 import { SmartImportModal } from '../components/SmartImportModal';
 import { CollectSkillModal } from '../components/CollectSkillModal';
+import { SkillExecutionView } from '../components/SkillExecutionView';
 import { SystemSettingsModal } from '../components/SystemSettingsModal';
 import { createBackup, BackupData } from '../utils/backup';
 import { PromptDetailModal } from '../components/PromptDetailModal';
@@ -138,6 +139,7 @@ const Index: React.FC = () => {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [executionHistory, setExecutionHistory] = useState<ExecutionRun[]>([]);
+  const [executionSkillId, setExecutionSkillId] = useState<string | undefined>(undefined);
 
   // NAVIGATION STATE
   const [activeSection, setActiveSection] = useState<ActiveSection>('prompts');
@@ -834,7 +836,14 @@ const Index: React.FC = () => {
   };
 
   const handleRunSkill = (skill: Skill) => {
-    setRunningSkill(skill);
+    // Switch to full-page execution view
+    setExecutionSkillId(skill.id);
+    setViewMode(ViewMode.EXECUTION);
+  };
+
+  const handleBackToGrid = () => {
+    setViewMode(ViewMode.GRID);
+    setExecutionSkillId(undefined);
   };
 
   const handleRunComplete = (run: ExecutionRun) => {
@@ -1549,42 +1558,74 @@ const Index: React.FC = () => {
                 {/* SKILLS SECTION */}
                 {activeSection === 'skills' && (
                   <>
-                    {filteredSkills.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredSkills.map(skill => (
-                          <SkillCard
-                            key={skill.id}
-                            skill={skill}
-                            promptCount={skill.embeddedPromptIds.length}
-                            onEdit={handleEditSkill}
-                            onDelete={handleDeleteSkill}
-                            onRun={handleRunSkill}
-                            onTogglePin={() => toggleSkillPin(skill.id)}
-                          />
-                        ))}
-                      </div>
+                    {viewMode === ViewMode.EXECUTION && executionSkillId ? (
+                      (() => {
+                        const skill = skills.find(s => s.id === executionSkillId);
+                        if (!skill) {
+                          // Fallback if skill not found (e.g. deleted)
+                          setViewMode(ViewMode.GRID);
+                          return null;
+                        }
+                        return (
+                          <div className="h-[calc(100vh-140px)] -mx-6 -my-6">
+                            <SkillExecutionView
+                              skill={skill}
+                              prompts={prompts}
+                              onBack={handleBackToGrid}
+                              onEdit={() => {
+                                setEditingSkill(skill);
+                                if (skill.sourceType === 'collected') {
+                                  setEditingCollectedSkill(skill);
+                                  setIsCollectSkillModalOpen(true);
+                                } else {
+                                  setIsSkillModalOpen(true);
+                                }
+                              }}
+                              onRunComplete={handleRunComplete}
+                            />
+                          </div>
+                        );
+                      })()
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
-                        <Zap size={48} className="text-foreground/20 mb-6" />
-                        <h3 className="text-2xl font-bold mb-2 text-foreground">No skills yet</h3>
-                        <p className="text-foreground/60 text-base mb-6">Collect a skill from the web or build one from your prompts.</p>
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={openCollectSkill}
-                            className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all"
-                          >
-                            <Download size={18} />
-                            COLLECT SKILL
-                          </button>
-                          <button
-                            onClick={openNewSkill}
-                            className="flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all"
-                          >
-                            <Edit3 size={18} />
-                            COMPOSE SKILL
-                          </button>
-                        </div>
-                      </div>
+                      <>
+                        {filteredSkills.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {filteredSkills.map(skill => (
+                              <SkillCard
+                                key={skill.id}
+                                skill={skill}
+                                promptCount={skill.embeddedPromptIds.length}
+                                onEdit={handleEditSkill}
+                                onDelete={handleDeleteSkill}
+                                onRun={handleRunSkill}
+                                onTogglePin={() => toggleSkillPin(skill.id)}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-32 bg-card border border-border border-dashed rounded-3xl text-center">
+                            <Zap size={48} className="text-foreground/20 mb-6" />
+                            <h3 className="text-2xl font-bold mb-2 text-foreground">No skills yet</h3>
+                            <p className="text-foreground/60 text-base mb-6">Collect a skill from the web or build one from your prompts.</p>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={openCollectSkill}
+                                className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold transition-all"
+                              >
+                                <Download size={18} />
+                                COLLECT SKILL
+                              </button>
+                              <button
+                                onClick={openNewSkill}
+                                className="flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-xl text-sm font-bold transition-all"
+                              >
+                                <Edit3 size={18} />
+                                COMPOSE SKILL
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
