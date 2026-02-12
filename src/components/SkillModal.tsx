@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Skill, AIPrompt, DEFAULT_CATEGORIES, generateId, scanSkillInputs } from '../types/index';
+import { Skill, AIPrompt, DEFAULT_CATEGORIES, generateId, scanSkillInputs, SkillArchetype, SkillPlaybook, SkillProvenance } from '../types/index';
 import { X, Zap, Plus, ChevronDown, Trash2, GripVertical, Search, RefreshCw, Copy, Check } from 'lucide-react';
 import { assembleSkillForLLM } from '../types/index';
 
@@ -42,6 +42,13 @@ export const SkillModal: React.FC<SkillModalProps> = ({
   const [showPromptSelector, setShowPromptSelector] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Deterministic metadata
+  const [archetype, setArchetype] = useState<SkillArchetype | undefined>(undefined);
+  const [playbook, setPlaybook] = useState<SkillPlaybook | undefined>(undefined);
+  const [provenance, setProvenance] = useState<SkillProvenance | undefined>(undefined);
+  const [resourceUrl, setResourceUrl] = useState<string | undefined>(undefined);
+  const [sourceMarkdown, setSourceMarkdown] = useState<string | undefined>(undefined);
+
   useEffect(() => {
     if (isOpen) {
       if (skill) {
@@ -60,6 +67,11 @@ export const SkillModal: React.FC<SkillModalProps> = ({
         setExpertPersona(skill.expertPersona || '');
         setRulesGuardrails(skill.rulesGuardrails || '');
         setProcedure(skill.procedure || '');
+        setArchetype(skill.archetype);
+        setPlaybook(skill.playbook);
+        setProvenance(skill.provenance);
+        setResourceUrl(skill.resourceUrl);
+        setSourceMarkdown(skill.sourceMarkdown);
       } else if (prefill) {
         setName(prefill.name || '');
         setDescription(prefill.description || '');
@@ -76,6 +88,11 @@ export const SkillModal: React.FC<SkillModalProps> = ({
         setExpertPersona(prefill.expertPersona || '');
         setRulesGuardrails(prefill.rulesGuardrails || '');
         setProcedure(prefill.procedure || '');
+        setArchetype(prefill.archetype);
+        setPlaybook(prefill.playbook);
+        setProvenance(prefill.provenance);
+        setResourceUrl(prefill.resourceUrl);
+        setSourceMarkdown(prefill.sourceMarkdown);
       } else {
         resetForm();
       }
@@ -101,6 +118,11 @@ export const SkillModal: React.FC<SkillModalProps> = ({
     setIsCreatingNewFolder(false);
     setPromptSearchQuery('');
     setShowPromptSelector(false);
+    setArchetype(undefined);
+    setPlaybook(undefined);
+    setProvenance(undefined);
+    setResourceUrl(undefined);
+    setSourceMarkdown(undefined);
   };
 
   const handleRescanInputs = () => {
@@ -138,6 +160,10 @@ export const SkillModal: React.FC<SkillModalProps> = ({
       createdAt: skill?.createdAt || Date.now(),
       updatedAt: Date.now(),
       usageCount: skill?.usageCount || 0,
+      title: name || 'Untitled Skill', // Required by Skill interface
+      archetype: archetype || SkillArchetype.SKILL_MARKDOWN,
+      playbook: playbook || SkillPlaybook.RUN_IN_APP,
+      provenance: provenance || { domain: 'user', detectedKind: SkillArchetype.SKILL_MARKDOWN, importedAtISO: new Date().toISOString(), confidence: 1 }
     };
     const text = assembleSkillForLLM(tempSkill);
     navigator.clipboard.writeText(text);
@@ -165,6 +191,10 @@ export const SkillModal: React.FC<SkillModalProps> = ({
       createdAt: skill?.createdAt || now,
       updatedAt: now,
       usageCount: skill?.usageCount || 0,
+      title: name || 'Untitled Skill',
+      archetype: archetype || SkillArchetype.SKILL_MARKDOWN,
+      playbook: playbook || SkillPlaybook.RUN_IN_APP,
+      provenance: provenance || { domain: 'user', detectedKind: SkillArchetype.SKILL_MARKDOWN, importedAtISO: new Date().toISOString(), confidence: 1 }
     });
 
     const savedSkill: Skill = {
@@ -188,7 +218,13 @@ export const SkillModal: React.FC<SkillModalProps> = ({
       createdAt: skill?.createdAt || now,
       updatedAt: now,
       usageCount: skill?.usageCount || 0,
-      isPinned: skill?.isPinned || false
+      isPinned: skill?.isPinned || false,
+      title: name || 'Untitled Skill', // Required field
+      archetype,
+      playbook,
+      provenance,
+      resourceUrl,
+      sourceMarkdown: sourceMarkdown || procedure, // Fallback to procedure
     };
     onSave(savedSkill);
     onClose();
@@ -225,7 +261,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
     setEmbeddedPromptIds(newOrder);
   };
 
-  const filteredPrompts = availablePrompts.filter(p => 
+  const filteredPrompts = availablePrompts.filter(p =>
     p.title.toLowerCase().includes(promptSearchQuery.toLowerCase()) ||
     p.description.toLowerCase().includes(promptSearchQuery.toLowerCase())
   );
@@ -251,11 +287,10 @@ export const SkillModal: React.FC<SkillModalProps> = ({
             <button
               type="button"
               onClick={handleCopyForLLM}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${
-                copied
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-accent/15 text-accent hover:bg-accent/25'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${copied
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-accent/15 text-accent hover:bg-accent/25'
+                }`}
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
               {copied ? 'COPIED!' : 'COPY FOR LLM'}
@@ -323,7 +358,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
                     value={folder}
                     onChange={(e) => setFolder(e.target.value)}
                   />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setIsCreatingNewFolder(false)}
                     className="p-2 text-muted-foreground hover:text-foreground"
@@ -411,11 +446,10 @@ export const SkillModal: React.FC<SkillModalProps> = ({
                         type="button"
                         onClick={() => addPrompt(p.id)}
                         disabled={embeddedPromptIds.includes(p.id)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                          embeddedPromptIds.includes(p.id)
-                            ? 'bg-muted/50 text-muted-foreground cursor-not-allowed'
-                            : 'hover:bg-muted text-foreground'
-                        }`}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${embeddedPromptIds.includes(p.id)
+                          ? 'bg-muted/50 text-muted-foreground cursor-not-allowed'
+                          : 'hover:bg-muted text-foreground'
+                          }`}
                       >
                         <div className="font-medium">{p.title}</div>
                         <div className="text-xs text-muted-foreground truncate">{p.description}</div>

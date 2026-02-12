@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { AIPrompt, Skill, DEFAULT_CATEGORIES, detectVariables, generateId, scanSkillInputs, parseTextToSkillFields } from '../types';
+import { AIPrompt, Skill, DEFAULT_CATEGORIES, detectVariables, generateId, scanSkillInputs, parseTextToSkillFields, SkillArchetype, SkillPlaybook } from '../types';
 import { Wand2, X, Eye, Sparkles, Tag, ChevronDown, Zap, FileText } from 'lucide-react';
+import { analyzeSkillInput, AnalyzeResult } from '../utils/analyzeSkillInput';
 
 type ImportMode = 'prompt' | 'skill';
 
@@ -55,14 +56,14 @@ function smartParse(raw: string): ParsedPrompt {
     bodyStartIndex = 1;
   }
 
-  const body = lines.length > 1 
-    ? lines.slice(bodyStartIndex).join('\n').trim() 
+  const body = lines.length > 1
+    ? lines.slice(bodyStartIndex).join('\n').trim()
     : lines[0].trim();
 
   const variables = detectVariables(raw);
 
-  const description = body.length > 120 
-    ? body.substring(0, 120).replace(/\s+\S*$/, '') + '…' 
+  const description = body.length > 120
+    ? body.substring(0, 120).replace(/\s+\S*$/, '') + '…'
     : body;
 
   return {
@@ -76,7 +77,7 @@ function smartParse(raw: string): ParsedPrompt {
 function smartParseSkill(raw: string): ParsedSkill {
   const lines = raw.trim().split(/\r?\n/).filter(l => l.trim());
   let name = '';
-  
+
   // Try extract a name from first line
   const nameMatch = lines[0]?.match(/^(?:skill|name|title)\s*[:：]\s*(.+)/i) || lines[0]?.match(/^#+\s+(.+)/);
   if (nameMatch) {
@@ -87,7 +88,7 @@ function smartParseSkill(raw: string): ParsedSkill {
 
   const fields = parseTextToSkillFields(raw);
   const scanned = scanSkillInputs(fields.procedure);
-  
+
   return {
     name,
     expertPersona: fields.expertPersona,
@@ -113,7 +114,8 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
   const [rawText, setRawText] = useState('');
   const [parsed, setParsed] = useState<ParsedPrompt | null>(null);
   const [parsedSkill, setParsedSkill] = useState<ParsedSkill | null>(null);
-  
+  const [analyzedSkill, setAnalyzedSkill] = useState<AnalyzeResult | null>(null);
+
   // Prompt fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -131,6 +133,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
     setRawText('');
     setParsed(null);
     setParsedSkill(null);
+    setAnalyzedSkill(null);
     setTitle('');
     setDescription('');
     setCategory('Creative');
@@ -153,7 +156,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
 
   const handleAnalyze = () => {
     if (!rawText.trim()) return;
-    
+
     if (mode === 'prompt') {
       const result = smartParse(rawText);
       setParsed(result);
@@ -162,16 +165,22 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
       setTags(result.variables.join(', '));
       setStep('preview');
     } else {
-      const result = smartParseSkill(rawText);
-      setParsedSkill(result);
-      setSkillName(result.name);
+      // Use the new shared deterministic analyzer
+      const result = analyzeSkillInput(rawText);
+      setAnalyzedSkill(result);
+
+      // Also run legacy parser for its specific field extractions
+      const legacyResult = smartParseSkill(rawText);
+      setParsedSkill(legacyResult);
+
+      setSkillName(result.name || legacyResult.name);
       setStep('preview');
     }
   };
 
   const handleImportPrompt = () => {
     if (!parsed) return;
-    
+
     const newPrompt: AIPrompt = {
       id: generateId(),
       title: title || 'Imported Prompt',
@@ -196,22 +205,21 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
   };
 
   const handleImportAsSkill = () => {
-    if (!parsedSkill || !onImportSkill) return;
-    
+    if (!parsedSkill || !onImportSkill || !analyzedSkill) return;
+
+    // Build a full deterministic prefill
     const prefill: Partial<Skill> = {
-      name: skillName || 'Imported Skill',
-      description: '',
+      ...analyzedSkill,
+      name: skillName || analyzedSkill.name || 'Imported Skill',
       category: skillCategory,
       folder: skillFolder,
-      tags: [],
-      inputsRequired: parsedSkill.inputsRequired,
-      outputFormat: parsedSkill.outputFormat,
-      expertPersona: parsedSkill.expertPersona,
-      rulesGuardrails: parsedSkill.rulesGuardrails,
-      procedure: parsedSkill.procedure,
+      // Merge legacy parsed fields if they exist
+      expertPersona: parsedSkill.expertPersona || analyzedSkill.expertPersona,
+      rulesGuardrails: parsedSkill.rulesGuardrails || analyzedSkill.rulesGuardrails,
+      outputFormat: parsedSkill.outputFormat || analyzedSkill.outputFormat,
+      procedure: analyzedSkill.procedure || parsedSkill.procedure,
+      inputsRequired: analyzedSkill.inputsRequired || parsedSkill.inputsRequired,
       status: 'draft',
-      embeddedPromptIds: [],
-      toolsUsed: [],
     };
 
     onImportSkill(prefill);
@@ -234,8 +242,8 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
                 {step === 'paste' ? 'Magic Import' : 'Confirm Import'}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {step === 'paste' 
-                  ? 'Paste any text — we\'ll organize it automatically.' 
+                {step === 'paste'
+                  ? 'Paste any text — we\'ll organize it automatically.'
                   : 'Review and edit the extracted details before saving.'}
               </p>
             </div>
@@ -253,9 +261,8 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
               <button
                 type="button"
                 onClick={() => setMode('prompt')}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  mode === 'prompt' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'prompt' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 <FileText size={14} />
                 Import as Prompt
@@ -263,9 +270,8 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
               <button
                 type="button"
                 onClick={() => setMode('skill')}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  mode === 'skill' ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'skill' ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 <Zap size={14} />
                 Import as Skill
@@ -275,7 +281,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
             <div className="relative">
               <textarea
                 autoFocus
-                placeholder={mode === 'prompt' 
+                placeholder={mode === 'prompt'
                   ? "Paste a prompt from the web here...\n\nExample:\nPrompt: Expert Marketing Strategist\n\nAct as a {{role}} specializing in {{industry}}..."
                   : "Paste a full skill/prompt template here...\n\nExample:\nRole: Expert Marketing Strategist\n\nRules:\n- Do not use jargon\n- Always cite sources\n\nAnalyze [TOPIC] for [AUDIENCE]...\n\nOutput Format:\nMarkdown report with sections..."
                 }
@@ -296,7 +302,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
               <button onClick={handleClose} className="px-5 py-2.5 bg-muted hover:bg-muted/80 rounded-xl text-sm font-bold text-muted-foreground transition-colors">
                 CANCEL
               </button>
-              <button 
+              <button
                 onClick={handleAnalyze}
                 disabled={!rawText.trim()}
                 className="flex items-center gap-2 px-6 py-2.5 bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl text-sm font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -468,8 +474,8 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({
 
             <div className="pt-4 border-t border-border flex gap-3">
               <button onClick={() => setStep('paste')} className="px-5 py-3 bg-muted hover:bg-muted/80 rounded-xl font-bold text-sm text-muted-foreground transition-colors">← BACK</button>
-              <button 
-                onClick={handleImportAsSkill} 
+              <button
+                onClick={handleImportAsSkill}
                 disabled={!onImportSkill}
                 className="flex-1 py-3 px-4 bg-secondary hover:bg-secondary/90 rounded-xl font-bold text-sm text-secondary-foreground transition-all active:scale-95 disabled:opacity-50"
               >

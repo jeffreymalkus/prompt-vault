@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Skill, DEFAULT_CATEGORIES, generateId, DeploymentStatus, SkillEcosystem, SkillArchetype, SkillPlaybook } from '../types/index';
 import { detectArchetype, ParseResult } from '../utils/skillParser';
+import { analyzeSkillInput, AnalyzeResult } from '../utils/analyzeSkillInput';
 import { X, Download, Upload, Copy, Check, ChevronDown, Eye, Edit3, ExternalLink, Wand2, Link2, Key, FolderOpen, FileText, Zap, Bookmark } from 'lucide-react';
 
 interface CollectSkillModalProps {
@@ -124,25 +125,20 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   const handleAnalyze = () => {
     if (!sourceMarkdown.trim()) return;
 
-    // Run the deterministic parser on the raw input
-    const result = detectArchetype(sourceMarkdown);
-    setParseResult(result);
+    // Use the shared deterministic analyzer
+    const result = analyzeSkillInput(sourceMarkdown);
+    setParseResult(result.parseResult);
 
-    // Map synthesized metadata → local state
-    setName(result.title);
-    setDescription(result.description);
-    setDetectedVars(result.detectedInputs);
-    setArchetype(result.archetype);
-    setPlaybook(result.playbook);
+    // Map synthesized metadata -> local state
+    setName(result.name || '');
+    setDescription(result.description || '');
+    setDetectedVars(result.inputsRequired || []);
+    setArchetype(result.archetype || SkillArchetype.PROMPT_TEXT);
+    setPlaybook(result.playbook || SkillPlaybook.RUN_IN_CHAT);
 
     if (result.resourceUrl) {
       setSourceUrl(result.resourceUrl);
     }
-
-    // DO NOT mutate sourceMarkdown here.
-    // The raw URL (or text) stays in sourceMarkdown during editing.
-    // The swap to synthesized content happens in handleSubmit to avoid
-    // triggering the useEffect → re-parse → overwrite race condition.
 
     setStep('metadata');
   };
@@ -163,12 +159,12 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
     e.preventDefault();
     const now = Date.now();
 
-    // Use stored parseResult provenance, or re-detect for fresh timestamp
-    const provenance = parseResult?.provenance || detectArchetype(sourceMarkdown).provenance;
+    // Re-run analysis to get the final metadata
+    const result = analyzeSkillInput(sourceMarkdown);
+    const provenance = result.provenance;
 
-    // For IMPLEMENTATION_RESOURCE, store the synthesized description as
-    // sourceMarkdown (clean content for rendering) and set procedure
-    const isResource = playbook === SkillPlaybook.IMPLEMENTATION_RESOURCE;
+    // For IMPLEMENTATION_RESOURCE, store synthesized description
+    const isResource = result.playbook === SkillPlaybook.IMPLEMENTATION_RESOURCE;
     const finalSourceMarkdown = isResource ? description : sourceMarkdown;
 
     const savedSkill: Skill = {
