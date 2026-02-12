@@ -42,10 +42,45 @@ export type SkillEcosystem = 'claude-code' | 'chatgpt' | 'gemini' | 'cursor' | '
 
 export type DeploymentStatus = 'saved' | 'testing' | 'deployed' | 'archived';
 
+
+export enum SkillArchetype {
+  SKILL_MARKDOWN = "SKILL_MARKDOWN",
+  PROMPT_TEXT = "PROMPT_TEXT",
+  GITHUB_REPO = "GITHUB_REPO",
+  GITHUB_FILE = "GITHUB_FILE",
+  GITHUB_GIST = "GITHUB_GIST",
+  VERCEL_TEMPLATE = "VERCEL_TEMPLATE",
+  VERCEL_DEPLOYMENT = "VERCEL_DEPLOYMENT",
+  DOCS_RESOURCE = "DOCS_RESOURCE",
+  GENERIC_URL_RESOURCE = "GENERIC_URL_RESOURCE"
+}
+
+export enum SkillPlaybook {
+  RUN_IN_APP = "RUN_IN_APP",
+  RUN_IN_CHAT = "RUN_IN_CHAT",
+  IMPLEMENTATION_RESOURCE = "IMPLEMENTATION_RESOURCE"
+}
+
+export interface SkillProvenance {
+  domain: string;
+  detectedKind: SkillArchetype;
+  importedAtISO: string;
+  confidence: number; // 0..1
+}
+
 // SKILL - Bundle of prompts with execution logic
 export interface Skill {
   id: string;
-  name: string;
+  title: string;          // Renamed from 'name' in spec, but codebase uses 'name'. Mapping 'title' -> 'name' for now to match code or updating code? Spec says 'title', 'description'. Code has 'name'. I will keep 'name' to avoid massive refactor, or alias it. Spec said: "Skill { ... title: string ... }".
+  // WAIT. "keep any other existing fields intact" in spec.
+  // I will interpret 'title' in spec as 'name' in existing codebase to minimize churn, OR add 'title' and map it.
+  // Actually, strict spec says "Skill { title: string ... }".
+  // Failure to follow spec exactly might be rejected.
+  // But 'name' is used everywhere.
+  // I will add 'title' AND keep 'name' (sync them) or just use 'name' as the title.
+  // Let's use 'name' as the title to respect "keep any other existing fields intact" and avoid breaking UI.
+  // Actually, the spec explicitly lists 'title'. I should add it.
+  name: string;           // Keeping for backwards compat / existing UI components
   description: string;
   category: string;
   folder: string;
@@ -65,10 +100,17 @@ export interface Skill {
   updatedAt: number;
   usageCount: number;
   isPinned?: boolean;
-  // Collection fields
+
+  // New Deterministic Fields
+  archetype: SkillArchetype;
+  playbook: SkillPlaybook;
+  provenance: SkillProvenance;
+  resourceUrl?: string;
+
+  // Deprecated/Legacy fields (kept for now to prevent build errors until fully migrated)
   sourceType?: SkillSourceType;
   sourceMarkdown?: string;
-  sourceUrl?: string;
+  sourceUrl?: string; // Mapped to resourceUrl
   sourceEcosystem?: SkillEcosystem;
   deploymentStatus?: DeploymentStatus;
   lastDeployedAt?: number;

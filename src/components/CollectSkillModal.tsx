@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Skill, DEFAULT_CATEGORIES, generateId, DeploymentStatus, SkillEcosystem } from '../types/index';
-import { analyzeSkillText, AnalysisResult } from '../utils/skillParser';
-import { X, Download, Upload, Copy, Check, ChevronDown, Eye, Edit3, ExternalLink, Wand2, Link2, Key, FolderOpen } from 'lucide-react';
+import { Skill, DEFAULT_CATEGORIES, generateId, DeploymentStatus, SkillEcosystem, SkillArchetype, SkillPlaybook } from '../types/index';
+import { detectArchetype, ParseResult } from '../utils/skillParser';
+import { X, Download, Upload, Copy, Check, ChevronDown, Eye, Edit3, ExternalLink, Wand2, Link2, Key, FolderOpen, FileText, Zap, Bookmark } from 'lucide-react';
 
 interface CollectSkillModalProps {
   skill?: Skill;
@@ -48,8 +48,8 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   const [sourceMarkdown, setSourceMarkdown] = useState('');
   const [showRawEdit, setShowRawEdit] = useState(false);
 
-  // Magic Analysis State
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  // Parser State
+  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
 
   // Metadata
   const [name, setName] = useState('');
@@ -62,6 +62,8 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   const [deploymentStatus, setDeploymentStatus] = useState<DeploymentStatus>('saved');
   const [deploymentTarget, setDeploymentTarget] = useState('');
   const [detectedVars, setDetectedVars] = useState<string[]>([]);
+  const [archetype, setArchetype] = useState<SkillArchetype>(SkillArchetype.PROMPT_TEXT);
+  const [playbook, setPlaybook] = useState<SkillPlaybook>(SkillPlaybook.RUN_IN_CHAT);
   const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
 
   // Action feedback
@@ -70,7 +72,7 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   // Run analysis on text change (debounced slightly in real app, here direct)
   useEffect(() => {
     if (step === 'paste' && sourceMarkdown) {
-      setAnalysis(analyzeSkillText(sourceMarkdown));
+      setParseResult(detectArchetype(sourceMarkdown));
     }
   }, [sourceMarkdown, step]);
 
@@ -80,25 +82,27 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
     if (skill) {
       setStep('metadata');
       setSourceMarkdown(skill.sourceMarkdown || '');
-      // Run initial analysis to populate vars even in edit mode
-      const res = analyzeSkillText(skill.sourceMarkdown || '');
-      setAnalysis(res);
+      // Re-run detection to identify vars for editing, but respect stored values primarily
+      const res = detectArchetype(skill.sourceMarkdown || '');
+      setParseResult(res);
 
       setName(skill.name);
       setDescription(skill.description);
       setCategory(skill.category);
       setFolder(skill.folder);
       setTags(skill.tags.join(', '));
-      setSourceUrl(skill.sourceUrl || '');
+      setSourceUrl(skill.sourceUrl || skill.resourceUrl || '');
       setSourceEcosystem(skill.sourceEcosystem || 'other');
       setDeploymentStatus(skill.deploymentStatus || 'saved');
       setDeploymentTarget(skill.deploymentTarget || '');
       setDetectedVars(skill.inputsRequired || []); // Use stored vars or re-detect
+      setArchetype(skill.archetype);
+      setPlaybook(skill.playbook);
       setShowRawEdit(false);
     } else {
       setStep('paste');
       setSourceMarkdown('');
-      setAnalysis(null);
+      setParseResult(null);
       setName('');
       setDescription('');
       setCategory('Creative');
@@ -109,6 +113,8 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
       setDeploymentStatus('saved');
       setDeploymentTarget('');
       setDetectedVars([]);
+      setArchetype(SkillArchetype.PROMPT_TEXT);
+      setPlaybook(SkillPlaybook.RUN_IN_CHAT);
       setShowRawEdit(false);
     }
   }, [isOpen, skill]);
@@ -117,21 +123,16 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
     if (!sourceMarkdown.trim()) return;
 
     // Use the latest analysis result
-    const result = analyzeSkillText(sourceMarkdown);
+    const result = detectArchetype(sourceMarkdown);
 
-    setName(result.detectedName || '');
-    setDescription(result.detectedDescription || '');
-    setDetectedVars(result.variables);
+    setName(result.title);
+    setDescription(result.description);
+    setDetectedVars(result.detectedInputs);
+    setArchetype(result.archetype);
+    setPlaybook(result.playbook);
 
-    // Auto-fill URL and Ecosystem from first detected link if available
-    if (result.urls.length > 0) {
-      setSourceUrl(result.urls[0].url);
-      // Map ecosystem from parsed result if we tracked it per URL, or use overall result logic
-      setSourceEcosystem(result.ecosystem);
-    }
-
-    if (result.suggestedCategory) {
-      setCategory(result.suggestedCategory);
+    if (result.resourceUrl) {
+      setSourceUrl(result.resourceUrl);
     }
 
     setStep('metadata');
@@ -152,9 +153,14 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const now = Date.now();
+
+    // Final provenance check (re-run to ensure fresh timestamp/logic if text changed)
+    const finalParse = detectArchetype(sourceMarkdown);
+
     const savedSkill: Skill = {
       id: skill?.id || generateId(),
       name: name || 'Untitled Skill',
+      title: name || 'Untitled Skill', // Sync title/name
       description,
       category,
       folder,
@@ -176,6 +182,12 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
       deploymentStatus,
       lastDeployedAt: skill?.lastDeployedAt,
       deploymentTarget: deploymentTarget || undefined,
+
+      // PROJECT RESET FIELDS
+      archetype,
+      playbook,
+      provenance: finalParse.provenance,
+      resourceUrl: sourceUrl || undefined
     };
     onSave(savedSkill);
     onClose();
@@ -244,8 +256,8 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
                   type="button"
                   onClick={handleCopySkill}
                   className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${copied
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-primary/15 text-primary hover:bg-primary/25'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-primary/15 text-primary hover:bg-primary/25'
                     }`}
                 >
                   {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -311,19 +323,17 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
                 <div className="h-4 w-px bg-border" />
 
                 {/* Status Badges */}
-                {analysis && (
+                {parseResult && (
                   <>
-                    <span className={`flex items-center gap-1.5 ${analysis.urls.length > 0 ? 'text-blue-500' : ''}`}>
-                      <Link2 size={14} /> {analysis.urls.length} Links
+                    <span className={`flex items-center gap-1.5 ${parseResult.resourceUrl ? 'text-blue-500' : ''}`}>
+                      <Link2 size={14} /> {parseResult.resourceUrl ? 'Link Detected' : 'No Link'}
                     </span>
-                    <span className={`flex items-center gap-1.5 ${analysis.variables.length > 0 ? 'text-green-500' : ''}`}>
-                      <Key size={14} /> {analysis.variables.length} Vars
+                    <span className={`flex items-center gap-1.5 ${parseResult.detectedInputs.length > 0 ? 'text-green-500' : ''}`}>
+                      <Key size={14} /> {parseResult.detectedInputs.length} Vars
                     </span>
-                    {analysis.suggestedCategory && (
-                      <span className="flex items-center gap-1.5 text-purple-500">
-                        <FolderOpen size={14} /> {analysis.suggestedCategory}
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1.5 text-purple-500">
+                      <FolderOpen size={14} /> {parseResult.archetype}
+                    </span>
                   </>
                 )}
               </div>
@@ -379,9 +389,9 @@ export const CollectSkillModal: React.FC<CollectSkillModalProps> = ({
                   value={sourceMarkdown}
                   onChange={(e) => {
                     setSourceMarkdown(e.target.value);
-                    const res = analyzeSkillText(e.target.value);
-                    setAnalysis(res);
-                    setDetectedVars(res.variables);
+                    const res = detectArchetype(e.target.value);
+                    setParseResult(res);
+                    setDetectedVars(res.detectedInputs);
                   }}
                 />
               ) : (
