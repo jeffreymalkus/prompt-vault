@@ -1,43 +1,185 @@
-# CURRENT TASK — Phase 1G: Prompt Card Editing Parity (Body + Variables + Save/New Version)
+# CURRENT_TASK.md — Active Sprint
 
-## Scope (modify only)
-- src/components/PromptCard.tsx
-- src/pages/Index.tsx (only if required to pass handlers/props; no other changes)
+## Sprint Title
+Substitution System Consistency & Validation
 
-## Objective
-The prompt card view must allow editing the prompt BODY inline (not only variables) and must use the same Save vs Save New Version semantics as the edit screen.
+---
 
-## Required behavior
+## Sprint Goal
 
-1) Inline body editing
-- PromptCard must allow editing prompt.content (body) directly on the card via a textarea.
-- It must be editable by default when viewing a prompt card (same as variables).
+Ensure that all variable substitution mechanisms across the application consistently support:
 
-2) Save (draft-only)
-- Card must have a "Save" action (use existing "Update Current" if present but rename it to "Save").
-- Save updates the current draft only:
-  - persists edited prompt.content
-  - persists edited variable values
-- Save must NOT create a snapshot/version.
+- [KEY]
+- [KEY:default]
+- [KEY:default/options]
 
-3) Save New Version (with title prompt)
-- Card must have a "Save New Version" action.
-- Clicking it must prompt for a version title (minimal inline prompt/modal is fine).
-- If cancelled or title is empty: do nothing.
-- If title provided: call the existing onSaveNewVersion handler with the title exactly as typed, using the current edited body + current variable values.
+This sprint validates the recent substitution fixes and hardens the system against regression.
 
-4) No duplicate version logic
-- PromptCard must not create snapshots directly.
-- It must call the existing handlers passed from Index.
+---
 
-## Constraints
-- Do not modify restore behavior.
-- Do not modify version engine logic (Index.tsx) beyond wiring required props.
-- Keep UI changes minimal; no redesign.
+## Context
 
-## Done when (live app)
-- On the prompt card, I can edit body + variables.
-- Clicking Save updates the current draft without creating a new version.
-- Clicking Save New Version prompts for a title and creates a new version that includes BOTH:
-  - the edited body
-  - the edited variables
+Recent changes unified placeholder parsing and substitution logic using:
+
+- PLACEHOLDER_REGEX
+- canonicalKey()
+
+Fixes were applied to:
+
+- RunSkillModal substitution
+- RunWorkflowModal substitution
+- Shared parsing utilities
+
+We must now confirm system-wide consistency.
+
+---
+
+## Scope
+
+### Included
+
+- Prompt copy flows
+- Prompt detail modal substitution
+- Skill execution substitution
+- Workflow execution substitution
+- Export / assembly outputs
+- Version snapshot variable persistence
+
+### Excluded
+
+- New feature development
+- UI redesign
+- Parsing syntax changes
+- Versioning architecture changes
+
+---
+
+## Workstreams
+
+### 1) Substitution Audit Agent
+
+Trace every substitution implementation and confirm support for:
+
+- [KEY]
+- [KEY:default/options]
+
+Identify any literal token matching logic such as:
+
+\[KEY\]
+
+Flag inconsistencies.
+
+---
+
+### 2) Variable Integrity Agent
+
+Validate alignment between:
+
+- Detection (PLACEHOLDER_REGEX)
+- Canonicalization (canonicalKey)
+- Storage (variableValues)
+- Substitution outputs
+
+Ensure consistent key derivation across all layers.
+
+---
+
+### 3) Regression Risk Agent
+
+Identify system surfaces vulnerable to substitution drift:
+
+- Skill assembly
+- Workflow chaining
+- Snapshot restoration
+- Import/export parsing
+
+Produce a risk register.
+
+---
+
+### 4) QA Validation Agent
+
+Produce a manual smoke test checklist covering:
+
+- Prompt detail substitution
+- Card copy behavior (expected raw vs substituted)
+- Skill run outputs
+- Workflow run outputs
+- Snapshot variable restoration
+
+---
+
+### 5) Documentation Agent
+
+Update or create:
+
+/docs/SUBSTITUTION_ARCHITECTURE.md
+
+Document:
+
+- Parsing model
+- Substitution model
+- Key normalization rules
+- Supported placeholder syntax
+
+---
+
+## Deliverables
+
+Cowork should produce:
+
+1. Substitution consistency matrix
+2. File-level audit findings
+3. Minimal fix list (if required)
+4. Regression risk log
+5. Validation checklist
+6. Documentation updates
+
+---
+
+## Implementation Constraints
+
+If fixes are required:
+
+- Reuse PLACEHOLDER_REGEX
+- Reuse canonicalKey()
+- Do not introduce alternate parsing logic
+- Do not alter variable syntax
+- Make minimal, surgical edits only
+
+---
+
+## Validation Requirements
+
+After implementation:
+
+- Build must compile cleanly
+- No TypeScript errors
+- No substitution regressions
+- No snapshot integrity impact
+
+---
+
+## Definition of Done
+
+Sprint is complete when:
+
+- All substitution paths support [KEY:default/options]
+- No literal token replacement logic remains
+- Validation checklist passes
+- Documentation is updated
+- No regressions detected
+
+---
+
+## Execution Mode
+
+Operate under CLAUDE.md instructions:
+
+Diagnose → Plan → Implement → Validate
+
+Do not implement changes without plan approval.
+
+---
+
+# End of Current Task

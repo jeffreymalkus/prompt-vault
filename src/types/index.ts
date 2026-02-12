@@ -36,6 +36,12 @@ export type TriggerType = 'manual' | 'scheduled' | 'event-based';
 
 export type ExecutionStatus = 'active' | 'paused' | 'error';
 
+export type SkillSourceType = 'composed' | 'collected';
+
+export type SkillEcosystem = 'claude-code' | 'chatgpt' | 'gemini' | 'cursor' | 'windsurf' | 'other';
+
+export type DeploymentStatus = 'saved' | 'testing' | 'deployed' | 'archived';
+
 // SKILL - Bundle of prompts with execution logic
 export interface Skill {
   id: string;
@@ -59,6 +65,14 @@ export interface Skill {
   updatedAt: number;
   usageCount: number;
   isPinned?: boolean;
+  // Collection fields
+  sourceType?: SkillSourceType;
+  sourceMarkdown?: string;
+  sourceUrl?: string;
+  sourceEcosystem?: SkillEcosystem;
+  deploymentStatus?: DeploymentStatus;
+  lastDeployedAt?: number;
+  deploymentTarget?: string;
 }
 
 // Scan skill procedure text for [VARIABLE] patterns (supports [KEY] and [KEY:default])
@@ -80,6 +94,10 @@ export function scanSkillInputs(text: string): string[] {
 
 // Assemble a skill into a portable Markdown block for LLM use
 export function assembleSkillForLLM(skill: Skill): string {
+  // For collected skills, return the full source markdown directly
+  if (skill.sourceType === 'collected' && skill.sourceMarkdown) {
+    return skill.sourceMarkdown;
+  }
   const sections: string[] = [];
   sections.push(`# Skill: ${skill.name}`);
   
